@@ -1,3 +1,4 @@
+
 // Microcontroller code for cell sorting.
 // Works alongside the main (python/kivy) application.
 // Designed for Teensy 3.6: https://www.pjrc.com/store/teensy36.html 
@@ -35,11 +36,11 @@
 #define ELECTRODE_ON_TIME 10
 
 // analog settings
-#define AREF ADC_REF_1V2                   // reference voltage setting, 1.2V for low voltages
-#define AREF_VAL 1.2                       // for calculations, set to voltage of above
-#define ASAMPSPEED ADC_VERY_HIGH_SPEED     // sampling speed; can set it high for low-impedence signals
-#define ACONVSPEED ADC_VERY_HIGH_SPEED     // conversion speed; upclocks the ADC freq at accuracy cost
-#define ARES adc->getMaxValue(ADC_0)       // analog resolution, set to be the same for both ADCs0&1
+#define AREF ADC_REFERENCE::REF_3V3                        // reference voltage setting, 1.2V for low voltages
+#define AREF_VAL 3.3                                       // for calculations, set to voltage of above
+#define ASAMPSPEED ADC_SAMPLING_SPEED::VERY_HIGH_SPEED     // sampling speed; can set it high for low-impedence signals
+#define ACONVSPEED ADC_CONVERSION_SPEED::VERY_HIGH_SPEED     // conversion speed; upclocks the ADC freq at accuracy cost
+#define ARES adc->getMaxValue(ADC_0)                       // analog resolution, set to be the same for both ADCs0&1
 
 // Division factor for converting integer voltages to floats
 // i.e. INPUT: [0, max(int)] -> OUTPUT: [0/float_div_factor, max(int)/float_div_factor]
@@ -290,6 +291,7 @@ void setup() {
     current_cell_count[i].i = 0;
     max_cell_count[i].i = std::numeric_limits<unsigned int>::max();
   }
+  run_state.i = 1; // DEBUG: turn it on
 }
 
 
@@ -441,7 +443,7 @@ void loop() {
 
   // debugging - timing of the main loop needs to be < ~25us for reliable detection
  
-  if(0) {
+  if(1) {
   Serial.write(255);
   Serial.print(" ID");
   Serial.print(id.i);

@@ -183,7 +183,6 @@ if __name__ == "__main__":
             mc.send_threshold_voltages(new_voltages)
         if i==30:
             mc.send_max_cell_counts(new_cell_counts)
-        
         mc.parse_data(10)
         mc.parse_data(20)
         mc.parse_data(30)
