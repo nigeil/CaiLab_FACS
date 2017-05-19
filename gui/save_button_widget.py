@@ -27,7 +27,8 @@ class SaveButton(Button):
     # create save string with all data except voltage traces
     def create_save_string(self):
         # collect information
-        voltage_thresholds = self.voltage_sliders.get_slider_vals()
+        min_voltage_thresholds = self.min_voltage_sliders.get_slider_vals()
+        max_voltage_thresholds = self.max_voltage_sliders.get_slider_vals()
         max_cell_counts = self.cell_counters.get_max_cell_vals()
         cells_selected = self.mc.get_current_cell_counts()
         comments = self.logging_inputs.get_log_data()
@@ -37,8 +38,10 @@ class SaveButton(Button):
         ret += "=== BEGIN LOG ===\n"
         ret += comments
         ret += "\n== SETTINGS/STATS ==\n"
-        ret += "Threshold voltages (mV, [RGBY]): "
-        ret += str(voltage_thresholds)
+        ret += "Minimum threshold voltages (mV, [RGBY]): "
+        ret += str(min_voltage_thresholds)
+        ret += "Maximum threshold voltages (mV, [RGBY]): "
+        ret += str(max_voltage_thresholds)
         ret += "\nNumber of cells to select (#, [RGBY]): " 
         ret += str(max_cell_counts)
         ret += "\nNumber of cells actually selected (#, [RGBY]): "
@@ -78,13 +81,15 @@ class SaveButton(Button):
 
 
     # Class initialization
-    def __init__(self, mc, voltage_sliders, cell_counters, logging_inputs, **kwargs):
+    def __init__(self, mc, min_voltage_sliders, max_voltage_sliders, 
+                 cell_counters, logging_inputs, **kwargs):
         # initialize super class (button)
         super(SaveButton, self).__init__(**kwargs)
 
         # grab parameters and save to class
         self.mc = mc
-        self.voltage_sliders = voltage_sliders
+        self.min_voltage_sliders = min_voltage_sliders
+        self.max_voltage_sliders = max_voltage_sliders
         self.cell_counters = cell_counters
         self.logging_inputs = logging_inputs
         
@@ -102,14 +107,15 @@ class SaveButtonWidget(BoxLayout):
     # Class helper functions
 
     # Class initialization
-    def __init__(self, mc, voltage_sliders, cell_counters, 
-                 logging_inputs, **kwargs):
+    def __init__(self, mc, min_voltage_sliders, max_voltage_sliders, 
+                 cell_counters, logging_inputs, **kwargs):
         # initialize super class (boxlayout)
         super(SaveButtonWidget, self).__init__(orientation="horizontal", 
                                                                  **kwargs)
 
         # create buttons and add to horizontal boxlayout
-        self.save_button = SaveButton(mc, voltage_sliders, cell_counters, logging_inputs)
+        self.save_button = SaveButton(mc, min_voltage_sliders, max_voltage_sliders, 
+                                      cell_counters, logging_inputs)
         self.add_widget(self.save_button)
 
 # testing, run this script alone to get a box with two buttons placed side-by-

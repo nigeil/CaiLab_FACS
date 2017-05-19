@@ -12,7 +12,8 @@ class Microcontroller():
     current_voltages = [0, 0, 0, 0]
     current_cell_counts = [0, 0, 0, 0] 
     current_loop_time = 0
-    threshold_voltages = [0, 0, 0, 0]    
+    min_threshold_voltages = [0, 0, 0, 0]    
+    max_threshold_voltages = [0, 0, 0, 0]    
     max_cell_counts = [0, 0, 0, 0] 
     ## buffered values
     voltage_buffer = deque([], maxlen=20000)
@@ -64,11 +65,14 @@ class Microcontroller():
     def get_loop_time_storage(self):
         return self.loop_time_storage
 
-    def get_threshold_voltages(self):
-        return self.threshold_voltages
+    def get_min_threshold_voltages(self):
+        return self.min_threshold_voltages
 
     def get_max_cell_counts(self):
         return self.max_cell_counts
+    
+    def get_max_threshold_voltages(self):
+        return self.max_threshold_voltages
 
     def get_debug_data(self):
         return self.debug_data
@@ -102,20 +106,24 @@ class Microcontroller():
             self.current_loop_time = self.bytes_to_int(in_bytes)
             self.loop_time_buffer.append(self.current_loop_time)
             self.loop_time_storage.append(self.current_loop_time)
-        # recieved threshold voltages 
+        # recieved minimum threshold voltages 
         elif (data_id == 4):
             in_bytes = self.microcontroller.read(size=4*4)
-            self.threshold_voltages = self.many_bytes_to_ints(in_bytes)
+            self.min_threshold_voltages = self.many_bytes_to_ints(in_bytes)
         # recieved max cell counts 
         elif (data_id == 5):
             in_bytes = self.microcontroller.read(size=4*4)
             self.max_cell_counts = self.many_bytes_to_ints(in_bytes)
+        # recieved max threshold voltages 
+        elif (data_id == 6):
+            in_bytes = self.microcontroller.read(size=4*4)
+            self.max_threshold_voltages = self.many_bytes_to_ints(in_bytes)
         # recieved debug data
         elif (data_id == 255):
             self.debug_data = self.microcontroller.readline()
     
     def parse_all_data(self, dt=0):
-        for i in [10,20,30,40,50]: # request data codes
+        for i in [10,20,30,40,50,60]: # request data codes
             self.parse_data(i)
 
     def parse_voltages(self, dt=0):
@@ -126,6 +134,7 @@ class Microcontroller():
     
     def parse_threshold_voltages(self, dt=0):
         self.parse_data(40)
+        self.parse_data(60)
 
     def send_run_state(self, state):
         if   (state == True):
@@ -143,13 +152,22 @@ class Microcontroller():
         else:
             return -1
 
-    def send_threshold_voltages(self, threshold_voltages):
+    def send_threshold_voltages(self, min_threshold_voltages, 
+                                max_threshold_voltages):
         # send data_id to microcontroller
         self.microcontroller.write(self.int_to_bytes(1))
         
         # convert floats to ints and send
         for i in range(0, 4):    
-            send_me = self.int_to_bytes(int(threshold_voltages[i]))
+            send_me = self.int_to_bytes(int(min_threshold_voltages[i]))
+            self.microcontroller.write(send_me)
+        
+        # send data_id to microcontroller
+        self.microcontroller.write(self.int_to_bytes(3))
+        
+        # convert floats to ints and send
+        for i in range(0, 4):    
+            send_me = self.int_to_bytes(int(max_threshold_voltages[i]))
             self.microcontroller.write(send_me)
         self.microcontroller.flush()
         return
@@ -178,13 +196,13 @@ if __name__ == "__main__":
     import time
 
     mc = Microcontroller()
-    new_voltages = [200,400,300,450] 
+    new_min_voltages = [200,400,300,450] 
+    new_max_voltages = [300,500,400,550] 
     new_cell_counts = [500,200,300,400]
-    print(new_voltages, new_cell_counts)
     mc.send_run_state(True)
     for i in range(0, 400):
         if i==10:
-            mc.send_threshold_voltages(new_voltages)
+            mc.send_threshold_voltages(new_min_voltages, new_max_voltages)
         if i==30:
             mc.send_max_cell_counts(new_cell_counts)
         mc.parse_data(10)
@@ -192,15 +210,14 @@ if __name__ == "__main__":
         mc.parse_data(30)
         mc.parse_data(40)
         mc.parse_data(50)
+        mc.parse_data(60)
         
-        print("Voltages           (mV): " + str(mc.get_current_voltages()))
-        print("Threshold voltages (mV): " + str(mc.get_threshold_voltages()))
-        print("Cell counts        (#) : " + str(mc.get_current_cell_counts()))
-        print("Max cell counts    (#) : " + str(mc.get_max_cell_counts()))
-        print("Loop time          (us): " + str(mc.get_current_loop_time()))
+        print("Voltages                   (mV): " + str(mc.get_current_voltages()))
+        print("Minimum threshold voltages (mV): " + str(mc.get_min_threshold_voltages()))
+        print("Maximum threshold voltages (mV): " + str(mc.get_max_threshold_voltages()))
+        print("Cell counts                (#) : " + str(mc.get_current_cell_counts()))
+        print("Max cell counts            (#) : " + str(mc.get_max_cell_counts()))
+        print("Loop time                  (us): " + str(mc.get_current_loop_time()))
         print("Voltage buffer: " + str(mc.get_voltage_buffer()))
        
-        debug = str(mc.get_debug_data())
-            #if('ID0' not in debug.split(" ")):
-        print(debug)
     mc.send_run_state(False)

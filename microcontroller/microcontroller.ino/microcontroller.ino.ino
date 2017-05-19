@@ -150,7 +150,7 @@ void send_voltages(byteint* voltages){
 }
 
 
-void send_thresh_voltages(byteint* voltages){
+void send_min_thresh_voltages(byteint* voltages){
   u_char send_buffer[1 + 4 * sizeof(int)];
   
   // send data ID to computer
@@ -171,6 +171,26 @@ void send_thresh_voltages(byteint* voltages){
   return;
 }
 
+void send_max_thresh_voltages(byteint* voltages){
+  u_char send_buffer[1 + 4 * sizeof(int)];
+  
+  // send data ID to computer
+  send_buffer[0] = 6;
+
+  // send voltages as 4-byte ints
+  u_int index = 1;
+  for(int i=0; i<4; i++){
+    int_to_bytes(voltages[i].i, voltages[i].b);
+    for(u_int j=0; j<sizeof(int); j++){
+      send_buffer[index] = voltages[i].b[j];
+      //send_buffer[index] = char(1);
+      index = index + 1;
+    }
+  }
+  
+  Serial.write(send_buffer, 1 + 4*sizeof(int));  
+  return;
+}
 
 // send the number of sorted cells back to the computer
 void send_cell_counts(byteint* cell_counts){
@@ -243,13 +263,15 @@ void send_loop_time(byteint loop_time){
 u_int pins[4] = {REDPIN,GREENPIN,BLUEPIN,YELLOWPIN};   // analog reading pins
 
 byteint current_voltage[4];                            // {r,g,b,y}
-byteint threshold_voltage[4];                          // {r,g,b,y}; select cell if current_voltage[i] >= threshold_voltage[i].
+byteint min_threshold_voltage[4];                      // {r,g,b,y}; select cell if max_threshold_voltage[i] >= current_voltage[i] >= min_threshold_voltage[i].
+byteint max_threshold_voltage[4];                      // {r,g,b,y}
+
 
 u_int time_in_state[4] = {0,0,0,0};                    // time that current_voltage[i] > threshold_voltage[i] 
 u_int time_out_of_state[4] = {0,0,0,0};                // time that current_voltage[i] < threshold_voltage[i] AFTER it entered the state 
-u_int required_time = 10;                              // (10) us, time that time_in_state[i] must be greater than for selection 
-u_int allowance_time = 10;                             // (10) us, time that current_voltage[i] can be < threshold_voltage[i] 
-                                                       // before resetting timer 
+const u_int required_time = 10;                        // (10) us, time that time_in_state[i] must be greater than for selection 
+const u_int allowance_time = 10;                       // (10) us, time that current_voltage[i] can be < threshold_voltage[i] 
+                                                       // before resetting timer TODO: maybe remove this logic, we have signal averaging now
                                                      
 byteint current_cell_count[4];                         // {r,g,b,y} in range [0, 65536]
 byteint max_cell_count[4];                             // as above, but current_cell_count[i] <= max_cell_count[i];
@@ -294,7 +316,8 @@ void setup() {
 
   for(u_int i=0; i<4; i++){
     current_voltage[i].i = 0;
-    threshold_voltage[i].i = 3300;
+    min_threshold_voltage[i].i = 3300;
+    max_threshold_voltage[i].i = 3300;
     current_cell_count[i].i = 0;
     max_cell_count[i].i = std::numeric_limits<unsigned int>::max();
   }
@@ -345,7 +368,8 @@ void loop() {
         if (old_run_state.i == 0 && run_state.i == 1){
           for(u_int i=0; i<4; i++){
             current_voltage[i].i = 0;
-            threshold_voltage[i].i = 3300;
+            min_threshold_voltage[i].i = 3300;
+            max_threshold_voltage[i].i = 3300;
             current_cell_count[i].i = 0;
             max_cell_count[i].i = std::numeric_limits<unsigned int>::max();
           }
@@ -353,14 +377,14 @@ void loop() {
       }
 
       
-      // id == 1: incoming threshold voltage settings
+      // id == 1: incoming minimum threshold voltage settings
       if(id.i == 1) {
         byteint new_threshold_voltage_buffer[4];
         for(int i=0; i<4; i++) {
           Serial.readBytes(new_threshold_voltage_buffer[i].b, sizeof(int));
           reverse(new_threshold_voltage_buffer[i].b, sizeof(int));
         }
-        set_threshold_voltages(threshold_voltage, new_threshold_voltage_buffer);
+        set_threshold_voltages(min_threshold_voltage, new_threshold_voltage_buffer);
       }
 
 
@@ -372,6 +396,16 @@ void loop() {
           reverse(new_cell_count_maxima[i].b, sizeof(int));
         }
         set_cell_selection_counts(max_cell_count, new_cell_count_maxima);
+      }
+
+      // id == 3: incoming maximum threshold voltage settings
+      if(id.i == 3) {
+        byteint new_threshold_voltage_buffer[4];
+        for(int i=0; i<4; i++) {
+          Serial.readBytes(new_threshold_voltage_buffer[i].b, sizeof(int));
+          reverse(new_threshold_voltage_buffer[i].b, sizeof(int));
+        }
+        set_threshold_voltages(max_threshold_voltage, new_threshold_voltage_buffer);
       }
 
       // id == 10: request for current voltages
@@ -392,14 +426,19 @@ void loop() {
         send_loop_time(time1);
       }
 
-      // id==40: request current threshold voltages
+      // id==40: request current minimum threshold voltages
       else if (id.i == 40){
-        send_thresh_voltages(threshold_voltage);
+        send_min_thresh_voltages(min_threshold_voltage);
       }
 
       // id==50: request for current max cell counts
       else if (id.i == 50){
         send_max_cell_counts(max_cell_count);
+      }
+      
+      // id==60: request current maximum threshold voltages
+      else if (id.i == 60){
+        send_max_thresh_voltages(max_threshold_voltage);
       }
   }
 
@@ -417,13 +456,13 @@ void loop() {
 
   measurement_time = micros() - time0.i;
    
-  // --- Comparing voltages to thresholds and times in state (above threshold voltage) --- //
+  // --- Comparing voltages to thresholds and times in state (above min threshold voltage, below max) --- //
   for(u_int i=0; i<4; i++){
-    if(current_voltage[i].i > threshold_voltage[i].i){
+    if((current_voltage[i].i > min_threshold_voltage[i].i) && (current_voltage[i].i < max_threshold_voltage[i].i)){
       time_in_state[i] += measurement_time;
       time_out_of_state[i] = 0;
     } 
-    else if(current_voltage[i].i <= threshold_voltage[i].i){
+    else{
       time_out_of_state[i] += measurement_time;
       if(time_out_of_state[i] > allowance_time){
         time_in_state[i] = 0;
@@ -462,6 +501,7 @@ void loop() {
 
 
   // debugging - timing of the main loop needs to be < ~25us for reliable detection
+  // set if(0) for off, if(1) for on (WILL SLOW DOWN LOOP)
  
   if(0) {
   Serial.write(255);
@@ -478,7 +518,7 @@ void loop() {
   }
   Serial.print(" THRESH_VOLTAGES: ");
   for(u_int i=0; i<4; i++){
-    Serial.print(threshold_voltage[i].i);
+    Serial.print(min_threshold_voltage[i].i);
     Serial.print(" ");
   }
   Serial.print(" CURR_CELL_COUNTS: ");

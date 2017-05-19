@@ -16,9 +16,11 @@ class UpdateButton(Button):
     # send over voltage/cell count values when pressed
     def send_values(self, instance):
         # sending
-        voltage_thresholds = self.voltage_sliders.get_slider_vals()
+        min_voltage_thresholds = self.min_voltage_sliders.get_slider_vals()
+        max_voltage_thresholds = self.max_voltage_sliders.get_slider_vals()
         max_cell_counts = self.cell_counters.get_max_cell_vals()
-        self.mc.send_threshold_voltages(voltage_thresholds)
+        self.mc.send_threshold_voltages(min_voltage_thresholds, 
+                                        max_voltage_thresholds)
         self.mc.send_max_cell_counts(max_cell_counts)
         
         # TODO: check for new values on mc == what we set
@@ -27,13 +29,15 @@ class UpdateButton(Button):
 
 
     # Class initialization
-    def __init__(self, mc, voltage_sliders, cell_counters, **kwargs):
+    def __init__(self, mc, min_voltage_sliders, max_voltage_sliders,
+                 cell_counters, **kwargs):
         # initialize super class (button)
         super(UpdateButton, self).__init__(**kwargs)
 
         # grab parameters and save to class
         self.mc = mc
-        self.voltage_sliders = voltage_sliders
+        self.min_voltage_sliders = min_voltage_sliders
+        self.max_voltage_sliders = max_voltage_sliders
         self.cell_counters = cell_counters
         
         # set button label text
@@ -50,13 +54,15 @@ class UpdateButtonWidget(BoxLayout):
     # Class helper functions
 
     # Class initialization
-    def __init__(self, mc, voltage_sliders, cell_counters, **kwargs):
+    def __init__(self, mc, min_voltage_sliders, max_voltage_sliders, 
+                 cell_counters, **kwargs):
         # initialize super class (boxlayout)
         super(UpdateButtonWidget, self).__init__(orientation="horizontal", 
                                                                  **kwargs)
 
         # create buttons and add to horizontal boxlayout
-        self.update_button = UpdateButton(mc, voltage_sliders, cell_counters)
+        self.update_button = UpdateButton(mc, min_voltage_sliders, 
+                                          max_voltage_sliders, cell_counters)
         self.add_widget(self.update_button)
 
 # testing, run this script alone to get a box with two buttons placed side-by-
