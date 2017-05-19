@@ -136,6 +136,10 @@ class Microcontroller():
             self.microcontroller.write(self.int_to_bytes(0))
             self.microcontroller.write(self.int_to_bytes(0)) # off
             self.microcontroller.flush()
+        elif (state == "Paused"):
+            self.microcontroller.write(self.int_to_bytes(0))
+            self.microcontroller.write(self.int_to_bytes(2)) # paused 
+            self.microcontroller.flush()
         else:
             return -1
 

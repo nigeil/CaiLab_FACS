@@ -33,6 +33,7 @@ class StartButton(Button):
             # start clocks to constantly poll data from the microcontroller while running
             #self.voltage_clock = Clock.schedule_interval(self.mc.parse_voltages,
             #                                             self.voltage_refresh_rate)
+            
             self.cell_count_clock = Clock.schedule_interval(self.mc.parse_cell_counts,
                                                             self.cell_count_refresh_rate)
             self.cell_count_display_clock = Clock.schedule_interval(
@@ -42,11 +43,21 @@ class StartButton(Button):
             self.threshold_voltage_display_clock = Clock.schedule_interval(
                     self.threshold_voltage_display.update_threshold_voltages, 
                     self.threshold_voltage_refresh_rate)
+            
         elif (self.running_status == False):
             self.mc.send_run_state(False) # tell microcontroller to stop sorting
             #self.realtime_stats.set_running_status(False) # tell plotter to stop plotting
             # stop the clocks when stopped
             #self.voltage_clock.cancel()
+            
+            self.cell_count_clock.cancel()
+            self.cell_count_display_clock.cancel()
+            self.threshold_voltage_clock.cancel()
+            self.threshold_voltage_display_clock.cancel()
+             
+        elif (self.running_status == "Paused"):
+            self.mc.send_run_state("Paused")
+            
             self.cell_count_clock.cancel()
             self.cell_count_display_clock.cancel()
             self.threshold_voltage_clock.cancel()
@@ -57,7 +68,10 @@ class StartButton(Button):
 
     # change button state when pressed
     def start_press(self, instance):
-        if (self.running_status != True):
+        if (self.running_status == False):
+            self.set_running_status(True)
+            self.text = "Running..."
+        elif (self.running_status == "Paused"):
             self.set_running_status(True)
             self.text = "Running..."
     
@@ -101,11 +115,37 @@ class StopButton(Button):
         self.start_button = start_button
         
         # set button label text
-        self.text = "Stop"
+        self.text = "Stop & reset"
         
         # bind function to change button state based on running_status
         self.bind(on_press = self.stop_press)
 
+class PauseButton(Button):
+    # Class variables
+    
+    # Class helper functions
+    
+    # change start button state when pressed (halt operation)
+    def pause_press(self, instance):
+        self.running_status = self.start_button.get_running_status()
+        if (self.running_status == True):
+            self.start_button.set_running_status("Paused")
+            self.start_button.set_text("Resume")
+    
+    # Class initialization; start_button needs to be created first and passed
+    # to the stop button
+    def __init__(self, start_button, **kwargs):
+        # initialize super class (button)
+        super(PauseButton, self).__init__(**kwargs)
+
+        # get start_button and save as class pointer
+        self.start_button = start_button
+        
+        # set button label text
+        self.text = "Pause"
+        
+        # bind function to change button state based on running_status
+        self.bind(on_press = self.pause_press)
 
 
 # Main widget class (boxlayout with two buttons side-by-side)
@@ -125,7 +165,9 @@ class StartStopButtonsWidget(BoxLayout):
         #self.start_button = StartButton(mc, realtime_stats)
         self.start_button = StartButton(mc, cell_counts_display, threshold_voltage_display)
         self.stop_button  = StopButton(self.start_button)
+        self.pause_button = PauseButton(self.start_button)
         self.add_widget(self.start_button)
+        self.add_widget(self.pause_button)
         self.add_widget(self.stop_button)
 
 # testing, run this script alone to get a box with two buttons placed side-by-

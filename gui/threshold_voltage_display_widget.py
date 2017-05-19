@@ -16,7 +16,7 @@ class ThresholdVoltageDisplayWidget(BoxLayout):
             self.threshold_voltage_labels[i].text = str(self.threshold_voltages[i])
 
 
-    def __init__(self, mc, title_text="Set threshold voltages", **kwargs):
+    def __init__(self, mc, title_text="Presently set threshold voltages (mV)", **kwargs):
         # initialize super class (boxlayout)
         super(ThresholdVoltageDisplayWidget, self).__init__(orientation="vertical",**kwargs)
 

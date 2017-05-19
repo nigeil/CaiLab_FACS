@@ -16,7 +16,7 @@ class CellCountsDisplayWidget(BoxLayout):
             self.cell_count_labels[i].text = str(self.cell_counts[i])
 
 
-    def __init__(self, mc, title_text="Number of cells selected", **kwargs):
+    def __init__(self, mc, title_text="Present number of cells selected (#)", **kwargs):
         # initialize super class (boxlayout)
         super(CellCountsDisplayWidget, self).__init__(orientation="vertical",**kwargs)
 

@@ -8,7 +8,8 @@ from kivy.uix.textinput import TextInput
 
 class CellNumberInputBox(BoxLayout):
     # Class variables
-    cell_number = 0 # number of cells to select
+    initial_cell_number = 1000000
+    cell_number = initial_cell_number # stores current number of cells to select
 
     # Class helper functions
     def get_cell_number(self):
@@ -49,11 +50,13 @@ class CellNumberInputBox(BoxLayout):
         self.label_text = label_text
 
         # create the input box and bind update function
-        self.input_box = TextInput(text="0", multiline=False, size_hint=(1.0,0.5))
+        self.input_box = TextInput(text=str(self.initial_cell_number), 
+                                   multiline=False, size_hint=(1.0,0.5))
         self.input_box.bind(text=self.update_cell_number)
 
         # create label with initial text
-        self.label = Label(text=self.label_text + "\n0", size_hint=(1.0,0.5))
+        self.label = Label(text=self.label_text + "\n" 
+                           + str(self.initial_cell_number), size_hint=(1.0,0.5))
 
         # add widgets to box layout
         self.add_widget(self.input_box)

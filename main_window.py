@@ -6,6 +6,9 @@
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.clock import Clock
+from kivy.config import Config
+# Configuration options
+Config.set('graphics', 'window_state', 'maximized')
 
 from gui.cell_number_input_box_widget import CellNumberInputBoxWidget
 from gui.logging_inputs import LoggingInputs
@@ -21,12 +24,15 @@ from microcontroller.microcontroller_comms import Microcontroller
 
 import numpy as np
 
+
 class MainWindow(App):
     def my_data_stream(self):
         return np.random.uniform(4,1200, (100,4))
 
     def build(self):
+        # create the microcontroller object and schedule its data refresh
         self.mc = Microcontroller()
+        #self.mc_refresh_clock = Clock.schedule_interval(lambda dt: self.mc.parse_all_data, 0.5)
 
         self.root_widget = BoxLayout(orientation="horizontal")
         
@@ -62,7 +68,7 @@ class MainWindow(App):
         # add all items to respective panels in correct order
         ## left panel items
         #self.left_panel.add_widget(self.realtime_stats)
-        self.left_panel.add_widget(BoxLayout(size_hint=(1.0, 0.7)))
+        self.left_panel.add_widget(BoxLayout(size_hint=(1.0, 0.8)))
         self.left_panel.add_widget(self.cell_counts_display)
         self.left_panel.add_widget(self.threshold_voltage_display)
         ## middle panel items
@@ -95,5 +101,7 @@ class MainWindow(App):
 '''
 
 if __name__ == "__main__":
+    
+    # Run it
     MainWindow().run()
 

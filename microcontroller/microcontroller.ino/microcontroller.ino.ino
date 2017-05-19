@@ -33,7 +33,10 @@
 
 // digital pin for triggering electrode (droplet selection)
 #define ELECTRODEPIN 2
-#define ELECTRODE_ON_TIME 10
+#define ELECTRODE_ON_TIME 100 // in us
+
+// digital pin for LED status light (HIGH if runstate == 1, running)
+#define LEDSTATUSPIN 0
 
 // analog settings
 #define AREF ADC_REFERENCE::REF_3V3                        // reference voltage setting, 1.2V for low voltages
@@ -257,8 +260,11 @@ ADC* adc;                                              // pointer to what will b
 byteint time0;                                          // start time
 byteint time1;                                          // total time taken for 1 loop
 
-byteint run_state;                                      // 0 if not running, 1 if running
+u_int measurement_time;                                 // time taken to measure voltages; used in determining whether or not to select cell
 
+byteint run_state;                                      // 0 if not running, 1 if running, 2 if paused (no reset when restarting)
+
+byteint id;                                             // id for incoming serial communications; used to determine what's on the way
 
 
 
@@ -280,6 +286,7 @@ void setup() {
 
   //set electrode (digital) pin to output, analogs to input
   pinMode(ELECTRODEPIN, OUTPUT);
+  pinMode(LEDSTATUSPIN, OUTPUT);
   pinMode(REDPIN, INPUT);
   pinMode(GREENPIN, INPUT);
   pinMode(BLUEPIN, INPUT);
@@ -301,8 +308,7 @@ void setup() {
 // ----- Start the main loop ----- //
 void loop() {
   time0.i = micros();
-  byteint id;
-  id.i = 1000;
+  id.i = 1000; // maps to nothing in the defined communication protocol
   
   // ---- Computer -> Microcontroller serial communications ---- //
   
@@ -321,8 +327,21 @@ void loop() {
         Serial.readBytes(run_state.b, sizeof(int));
         reverse(run_state.b, sizeof(int));
         run_state.i = bytes_to_int(run_state.b);
+
+        // check for valid run states, set to safe value if not:
+        // 0 -> off; 1 -> on; 2 -> paused (off, but don't reset when turned back on)
+        if (!(run_state.i == 0 || run_state.i == 1 || run_state.i == 2)) {
+          run_state.i = 0;
+        }
         
-        // starting the microcontroller - zero everything out and start again
+        if (run_state.i == 1){
+          digitalWrite(LEDSTATUSPIN, HIGH);
+        } 
+        else {
+          digitalWrite(LEDSTATUSPIN, LOW);
+        }
+        
+        // first time starting the microcontroller - zero everything out and start again (reset)
         if (old_run_state.i == 0 && run_state.i == 1){
           for(u_int i=0; i<4; i++){
             current_voltage[i].i = 0;
@@ -386,7 +405,8 @@ void loop() {
 
   // ---- Check run state ---- //
   // run_state == 0 means off, so go back to top of loop (return) and wait to turn on
-  if (run_state.i == 0){
+  // run_state == 2 means PAUSED, so go back to top of loop and wait, but don't reset anything
+  if (run_state.i == 0 || run_state.i == 2){
     return;
   }
 
@@ -395,7 +415,7 @@ void loop() {
   // --- Detecting fluoresence on all 4 color channels --- //
   measure_voltages(adc, current_voltage);
 
-  u_int measurement_time = micros() - time0.i;
+  measurement_time = micros() - time0.i;
    
   // --- Comparing voltages to thresholds and times in state (above threshold voltage) --- //
   for(u_int i=0; i<4; i++){
@@ -443,7 +463,7 @@ void loop() {
 
   // debugging - timing of the main loop needs to be < ~25us for reliable detection
  
-  if(1) {
+  if(0) {
   Serial.write(255);
   Serial.print(" ID");
   Serial.print(id.i);

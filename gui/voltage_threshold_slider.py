@@ -8,7 +8,9 @@ from kivy.uix.slider import Slider
 
 class VoltageThresholdSlider(BoxLayout):
     # Class variables (not including ones created in __init__) 
-    slider_val = 400 
+    slider_val = 400      # mV
+    slider_val_min = 0    # mV
+    slider_val_max = 3300 # mV
 
     # Class helper functions 
     def update_slider_val(self, instance, value):
@@ -29,8 +31,9 @@ class VoltageThresholdSlider(BoxLayout):
         self.label_text = label_text 
 
         # create slider and its attached label
-        self.slider = Slider(min=0.0, max=600, value=400,
-                             orientation="vertical", size_hint=(1.0, 0.8))
+        self.slider = Slider(min=self.slider_val_min, max=self.slider_val_max, 
+                             value=self.slider_val, orientation="vertical", 
+                             size_hint=(1.0, 0.8))
         self.label = Label(text=label_text + "\n" + 
                                 "{0:.0f}".format(self.slider_val), 
                                 size_hint=(1.0, 0.2))
