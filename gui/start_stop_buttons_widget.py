@@ -16,9 +16,11 @@ class StartButton(Button):
     running_status = False
     voltage_clock = None
     cell_count_clock = None
+    logic_state_clock = None
     voltage_refresh_rate = 1.0/20000.0
     threshold_voltage_refresh_rate = 1.0/100.0
     cell_count_refresh_rate = 1.0/100.0
+    logic_states_refresh_rate = 1.0/100.0
     
     # Class helper functions
     def get_running_status(self):
@@ -43,6 +45,10 @@ class StartButton(Button):
             self.threshold_voltage_display_clock = Clock.schedule_interval(
                     self.threshold_voltage_display.update_threshold_voltages, 
                     self.threshold_voltage_refresh_rate)
+            self.logic_states_clock = Clock.schedule_interval(self.mc.parse_logic_states,
+                                                            self.logic_states_refresh_rate)
+            self.logic_states_display_clock = Clock.schedule_interval(
+                        self.logic_states_display.update_logic_states, self.logic_states_refresh_rate)
             
         elif (self.running_status == False):
             self.mc.send_run_state(False) # tell microcontroller to stop sorting
@@ -54,6 +60,8 @@ class StartButton(Button):
             self.cell_count_display_clock.cancel()
             self.threshold_voltage_clock.cancel()
             self.threshold_voltage_display_clock.cancel()
+            self.logic_states_clock.cancel()
+            self.logic_states_display_clock.cancel()
              
         elif (self.running_status == "Paused"):
             self.mc.send_run_state("Paused")
@@ -62,6 +70,8 @@ class StartButton(Button):
             self.cell_count_display_clock.cancel()
             self.threshold_voltage_clock.cancel()
             self.threshold_voltage_display_clock.cancel()
+            self.logic_states_clock.cancel()
+            self.logic_states_display_clock.cancel()
 
     def set_text(self, new_text):
         self.text = new_text
@@ -77,7 +87,8 @@ class StartButton(Button):
     
     # Class initialization
     #def __init__(self, mc, realtime_stats, **kwargs):
-    def __init__(self, mc, cell_counts_display, threshold_voltage_display, **kwargs):
+    def __init__(self, mc, cell_counts_display, threshold_voltage_display, 
+                 logic_states_display, **kwargs):
         # initialize super class (button)
         super(StartButton, self).__init__(**kwargs)
 
@@ -85,6 +96,7 @@ class StartButton(Button):
         self.mc = mc                         # microcontroller object
         self.cell_counts_display = cell_counts_display
         self.threshold_voltage_display = threshold_voltage_display
+        self.logic_states_display = logic_states_display
         #self.realtime_stats = realtime_stats # plotting object
 
         # set button label text
@@ -156,14 +168,16 @@ class StartStopButtonsWidget(BoxLayout):
 
     # Class initialization
     #def __init__(self, mc, realtime_stats, **kwargs):
-    def __init__(self, mc, cell_counts_display, threshold_voltage_display,  **kwargs):
+    def __init__(self, mc, cell_counts_display, threshold_voltage_display,  
+                 logic_states_display, **kwargs):
         # initialize super class (boxlayout)
         super(StartStopButtonsWidget, self).__init__(orientation="horizontal", 
                                                                  **kwargs)
 
         # create buttons and add to horizontal boxlayout
         #self.start_button = StartButton(mc, realtime_stats)
-        self.start_button = StartButton(mc, cell_counts_display, threshold_voltage_display)
+        self.start_button = StartButton(mc, cell_counts_display, threshold_voltage_display,
+                                        logic_states_display)
         self.stop_button  = StopButton(self.start_button)
         self.pause_button = PauseButton(self.start_button)
         self.add_widget(self.start_button)

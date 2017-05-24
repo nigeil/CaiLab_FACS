@@ -15,6 +15,7 @@ class Microcontroller():
     min_threshold_voltages = [0, 0, 0, 0]    
     max_threshold_voltages = [0, 0, 0, 0]    
     max_cell_counts = [0, 0, 0, 0] 
+    logic_states = [1,1,1,1]
     ## buffered values
     voltage_buffer = deque([], maxlen=20000)
     cell_count_buffer = deque([], maxlen=20000)
@@ -74,6 +75,9 @@ class Microcontroller():
     def get_max_threshold_voltages(self):
         return self.max_threshold_voltages
 
+    def get_logic_states(self):
+        return self.logic_states
+
     def get_debug_data(self):
         return self.debug_data
 
@@ -118,12 +122,16 @@ class Microcontroller():
         elif (data_id == 6):
             in_bytes = self.microcontroller.read(size=4*4)
             self.max_threshold_voltages = self.many_bytes_to_ints(in_bytes)
+        # recieved logic states
+        elif (data_id == 7):
+            in_bytes = self.microcontroller.read(size=4*4)
+            self.logic_states = self.many_bytes_to_ints(in_bytes)
         # recieved debug data
         elif (data_id == 255):
             self.debug_data = self.microcontroller.readline()
     
     def parse_all_data(self, dt=0):
-        for i in [10,20,30,40,50,60]: # request data codes
+        for i in [10,20,30,40,50,60,70]: # request data codes
             self.parse_data(i)
 
     def parse_voltages(self, dt=0):
@@ -135,6 +143,9 @@ class Microcontroller():
     def parse_threshold_voltages(self, dt=0):
         self.parse_data(40)
         self.parse_data(60)
+
+    def parse_logic_states(self, dt=0):
+        self.parse_data(70)
 
     def send_run_state(self, state):
         if   (state == True):
@@ -183,6 +194,18 @@ class Microcontroller():
         self.microcontroller.flush()
         return
 
+    def send_logic_states(self, logic_states):
+        # send data_id to microcontroller
+        self.microcontroller.write(self.int_to_bytes(4))
+        
+        # convert floats to ints and send
+        for i in range(0, 4):    
+            send_me = self.int_to_bytes(int(logic_states[i]))
+            self.microcontroller.write(send_me)
+        self.microcontroller.flush()
+        return
+
+
     # Class initialization
     def __init__(self):
         self.microcontroller = serial.Serial('/dev/ttyACM0', timeout=0.001, rtscts=True)
@@ -199,24 +222,29 @@ if __name__ == "__main__":
     new_min_voltages = [200,400,300,450] 
     new_max_voltages = [300,500,400,550] 
     new_cell_counts = [500,200,300,400]
+    new_logic_states = [0,1,2,3]
     mc.send_run_state(True)
     for i in range(0, 400):
         if i==10:
             mc.send_threshold_voltages(new_min_voltages, new_max_voltages)
         if i==30:
             mc.send_max_cell_counts(new_cell_counts)
+        if i==50:
+            mc.send_logic_stats(new_logic_states)
         mc.parse_data(10)
         mc.parse_data(20)
         mc.parse_data(30)
         mc.parse_data(40)
         mc.parse_data(50)
         mc.parse_data(60)
+        mc.parse_data(70)
         
         print("Voltages                   (mV): " + str(mc.get_current_voltages()))
         print("Minimum threshold voltages (mV): " + str(mc.get_min_threshold_voltages()))
         print("Maximum threshold voltages (mV): " + str(mc.get_max_threshold_voltages()))
         print("Cell counts                (#) : " + str(mc.get_current_cell_counts()))
         print("Max cell counts            (#) : " + str(mc.get_max_cell_counts()))
+        print("Logic states               (#) : " + str(mc.get_logic_states()))
         print("Loop time                  (us): " + str(mc.get_current_loop_time()))
         print("Voltage buffer: " + str(mc.get_voltage_buffer()))
        

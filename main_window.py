@@ -19,6 +19,8 @@ from gui.update_button_widget import UpdateButtonWidget
 from gui.save_button_widget import SaveButtonWidget
 from gui.cell_counts_display_widget import CellCountsDisplayWidget
 from gui.threshold_voltage_display_widget import ThresholdVoltageDisplayWidget
+from gui.logic_radio_button_widget import LogicRadioButtonWidget
+from gui.logic_states_display_widget import LogicStatesDisplayWidget
 from data_analysis.realtime_plotting_widget import RealtimePlottingWidget
 from microcontroller.microcontroller_comms import Microcontroller
 
@@ -44,13 +46,15 @@ class MainWindow(App):
         #self.realtime_stats = RealtimeStatisticsWidget(self.my_data_stream)
         self.cell_counts_display = CellCountsDisplayWidget(self.mc, size_hint=(1.0,0.2))
         self.threshold_voltage_display = ThresholdVoltageDisplayWidget(self.mc, 
-                                                                       size_hint=(1.0,0.2))
+                                                                       size_hint=(1.0,0.3))
+        self.logic_states_display = LogicStatesDisplayWidget(self.mc, size_hint=(1.0,0.2))
 
         # middle panel items
         self.middle_panel = BoxLayout(orientation="vertical", size_hint=(0.2, 1.0))
         self.logging_inputs = LoggingInputs(size_hint=(1.0,0.75))
         self.start_stop = StartStopButtonsWidget(self.mc, self.cell_counts_display, 
                                                  self.threshold_voltage_display,
+                                                 self.logic_states_display,
                                                  size_hint=(1.0,0.15))
         
         # right panel items
@@ -59,15 +63,17 @@ class MainWindow(App):
                                                                 size_hint=(0.45, 1.0))
         self.max_voltage_sliders = VoltageThresholdSliderWidget(title_text="Maximum Selection threshold (mV)", 
                                                                 size_hint=(0.45, 1.0))
+        self.logic_radio_buttons = LogicRadioButtonWidget(size_hint=(1.0, 0.4))
         self.cell_counters = CellNumberInputBoxWidget(size_hint=(1.0,0.2))
         self.update_button = UpdateButtonWidget(self.mc, self.min_voltage_sliders, 
                                                 self.max_voltage_sliders, self.cell_counters, 
-                                                size_hint=(1.0, 0.15))
+                                                self.logic_radio_buttons, size_hint=(1.0, 0.15))
         
         # extra items
         ## save_button - middle panel
-        self.save_button = SaveButtonWidget(self.mc, self.min_voltage_sliders, self.max_voltage_sliders, 
-                                            self.cell_counters, self.logging_inputs, 
+        self.save_button = SaveButtonWidget(self.mc, self.min_voltage_sliders, 
+                                            self.max_voltage_sliders, self.cell_counters, 
+                                            self.logic_radio_buttons, self.logging_inputs, 
                                             size_hint=(1.0, 0.1))
 
         # add all items to respective panels in correct order
@@ -76,6 +82,7 @@ class MainWindow(App):
         self.left_panel.add_widget(BoxLayout(size_hint=(1.0, 0.8)))
         self.left_panel.add_widget(self.cell_counts_display)
         self.left_panel.add_widget(self.threshold_voltage_display)
+        self.left_panel.add_widget(self.logic_states_display)
         ## middle panel items
         self.middle_panel.add_widget(self.logging_inputs)
         self.middle_panel.add_widget(self.save_button)
@@ -87,6 +94,7 @@ class MainWindow(App):
         self.voltage_sliders.add_widget(BoxLayout(orientation="horizontal", size_hint=(0.1, 1.0)))
         self.voltage_sliders.add_widget(self.max_voltage_sliders)
         self.right_panel.add_widget(self.voltage_sliders)
+        self.right_panel.add_widget(self.logic_radio_buttons)
         self.right_panel.add_widget(self.cell_counters)
         self.right_panel.add_widget(self.update_button)
 

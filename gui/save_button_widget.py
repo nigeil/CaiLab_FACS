@@ -5,6 +5,7 @@
 # iii.) the current desired cell counts
 # iv.) compressed arrays of the actual voltage traces
 # v.) how many cells were finally selected
+# vi.) the logic states of the PMT channels
 # All of this is saved to files in the user-specified directory, overwriting 
 # what might have been there before (save at will)
 
@@ -31,6 +32,7 @@ class SaveButton(Button):
         max_voltage_thresholds = self.max_voltage_sliders.get_slider_vals()
         max_cell_counts = self.cell_counters.get_max_cell_vals()
         cells_selected = self.mc.get_current_cell_counts()
+        logic_states = self.mc.get_logic_states()
         comments = self.logging_inputs.get_log_data()
         
         # make a nice string out of it
@@ -46,6 +48,8 @@ class SaveButton(Button):
         ret += str(max_cell_counts)
         ret += "\nNumber of cells actually selected (#, [RGBY]): "
         ret += str(cells_selected) 
+        ret += "\nLogic states for PMT channels (# code, [RGBY]): "
+        ret += str(logic_states)
         ret += "\n=== END LOG ==="
         return ret
 
@@ -82,7 +86,7 @@ class SaveButton(Button):
 
     # Class initialization
     def __init__(self, mc, min_voltage_sliders, max_voltage_sliders, 
-                 cell_counters, logging_inputs, **kwargs):
+                 cell_counters, logic_radio_buttons, logging_inputs, **kwargs):
         # initialize super class (button)
         super(SaveButton, self).__init__(**kwargs)
 
@@ -91,6 +95,7 @@ class SaveButton(Button):
         self.min_voltage_sliders = min_voltage_sliders
         self.max_voltage_sliders = max_voltage_sliders
         self.cell_counters = cell_counters
+        self.logic_radio_buttons = logic_radio_buttons
         self.logging_inputs = logging_inputs
         
         # set button label text
@@ -108,14 +113,14 @@ class SaveButtonWidget(BoxLayout):
 
     # Class initialization
     def __init__(self, mc, min_voltage_sliders, max_voltage_sliders, 
-                 cell_counters, logging_inputs, **kwargs):
+                 cell_counters, logic_radio_buttons, logging_inputs, **kwargs):
         # initialize super class (boxlayout)
         super(SaveButtonWidget, self).__init__(orientation="horizontal", 
                                                                  **kwargs)
 
         # create buttons and add to horizontal boxlayout
         self.save_button = SaveButton(mc, min_voltage_sliders, max_voltage_sliders, 
-                                      cell_counters, logging_inputs)
+                                      cell_counters, logic_radio_buttons, logging_inputs)
         self.add_widget(self.save_button)
 
 # testing, run this script alone to get a box with two buttons placed side-by-

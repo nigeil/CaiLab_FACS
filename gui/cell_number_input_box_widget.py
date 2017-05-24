@@ -4,7 +4,9 @@
 
 from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
-from gui.cell_number_input_box import CellNumberInputBox
+if (__name__ != "__main__"):
+    from gui.cell_number_input_box import CellNumberInputBox
+
 
 class CellNumberInputBoxWidget(BoxLayout):
     # Class variables
@@ -39,11 +41,12 @@ class CellNumberInputBoxWidget(BoxLayout):
 # testing
 if __name__ == "__main__":
     from kivy.app import App
+    from cell_number_input_box import CellNumberInputBox
 
     class MyApp(App):
         def build(self):
             root_widget = BoxLayout(orientation="vertical")
-            main_box = CellNumberInputBoxesWidget()
+            main_box = CellNumberInputBoxWidget()
             root_widget.add_widget(main_box)
             return root_widget
     MyApp().run()

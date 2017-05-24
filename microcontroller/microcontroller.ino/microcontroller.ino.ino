@@ -64,6 +64,9 @@ struct byteint{
 
 // ----- Helper functions ----- //
 
+
+// CONVERSIONS
+
 // Converting from bytes to a 4 byte intger
 int bytes_to_int(char* the_bytes){
   return u_int(the_bytes[3] << 24) | (the_bytes[2] << 16) | (the_bytes[1] << 8) | (the_bytes[0]);
@@ -91,6 +94,8 @@ void reverse(char* arr, int count)
 }
 
 
+// SETTERS
+
 // call when new threshold values have been recieved (as bytes) from the computer
 void set_threshold_voltages(byteint* thresh_voltages, byteint* new_thresh_voltages){
   for(int i=0; i<4; i++){
@@ -117,6 +122,20 @@ void set_cell_selection_counts(byteint* max_cell_counts, byteint* new_cell_max_c
 }
 
 
+// call when new PMT logic states have been recieved (as bytes) from the computer
+void set_logic_states(byteint* logic_states, byteint* new_logic_states){
+  for (u_int i=0; i<4; i++){
+    new_logic_states[i].i = bytes_to_int(new_logic_states[i].b);
+    logic_states[i].i = new_logic_states[i].i;
+    for (u_int j=0; j<sizeof(int); j++){
+      logic_states[i].b[j] = new_logic_states[i].b[j];
+    }
+  }
+  return;
+}
+
+// MEASUREMENT
+
 // read from 4 analog pins and convert to voltages
 void measure_voltages(ADC* adc, byteint* voltages){
   voltages[0].i = (adc->analogRead(REDPIN))    * (AREF_VAL / ARES) * VOLTAGE_DIV_FACTOR;
@@ -126,6 +145,8 @@ void measure_voltages(ADC* adc, byteint* voltages){
   return;
 }
 
+
+// SENDERS
 
 // send the measured voltages back to the computer
 void send_voltages(byteint* voltages){
@@ -256,6 +277,27 @@ void send_loop_time(byteint loop_time){
 }
 
 
+// send the current PMT logic states back to the computer
+void send_logic_states(byteint* logic_states){
+  byte send_buffer[1 + (4 * sizeof(int))];
+    
+  // send data ID to computer
+  send_buffer[0] = 7; //identifier byte
+
+  // send logic states as 4-byte ints
+  u_int index = 1;
+  for(u_int i=0; i<4; i++){    
+    int_to_bytes(logic_states[i].i, logic_states[i].b);
+    for(u_int j=0; j<sizeof(int); j++){
+      send_buffer[index] = logic_states[i].b[j];
+      index = index + 1;
+    }
+  }
+  
+  Serial.write(send_buffer, 1 + (4 * sizeof(int)));
+  return;
+}
+
 
 
 
@@ -265,7 +307,7 @@ u_int pins[4] = {REDPIN,GREENPIN,BLUEPIN,YELLOWPIN};   // analog reading pins
 byteint current_voltage[4];                            // {r,g,b,y}
 byteint min_threshold_voltage[4];                      // {r,g,b,y}; select cell if max_threshold_voltage[i] >= current_voltage[i] >= min_threshold_voltage[i].
 byteint max_threshold_voltage[4];                      // {r,g,b,y}
-
+byteint logic_states[4];                               // {r,g,b,y}; 0->ignore PMT, 1->logical inclusive OR, 2->logical AND, 3->logical NOT
 
 u_int time_in_state[4] = {0,0,0,0};                    // time that current_voltage[i] > threshold_voltage[i] 
 u_int time_out_of_state[4] = {0,0,0,0};                // time that current_voltage[i] < threshold_voltage[i] AFTER it entered the state 
@@ -320,6 +362,7 @@ void setup() {
     max_threshold_voltage[i].i = 3300;
     current_cell_count[i].i = 0;
     max_cell_count[i].i = std::numeric_limits<unsigned int>::max();
+    logic_states[i].i = 0;
   }
   run_state.i = 1; // DEBUG: turn it on
 }
@@ -378,7 +421,7 @@ void loop() {
 
       
       // id == 1: incoming minimum threshold voltage settings
-      if(id.i == 1) {
+      else if(id.i == 1) {
         byteint new_threshold_voltage_buffer[4];
         for(int i=0; i<4; i++) {
           Serial.readBytes(new_threshold_voltage_buffer[i].b, sizeof(int));
@@ -399,13 +442,23 @@ void loop() {
       }
 
       // id == 3: incoming maximum threshold voltage settings
-      if(id.i == 3) {
+      else if(id.i == 3) {
         byteint new_threshold_voltage_buffer[4];
         for(int i=0; i<4; i++) {
           Serial.readBytes(new_threshold_voltage_buffer[i].b, sizeof(int));
           reverse(new_threshold_voltage_buffer[i].b, sizeof(int));
         }
         set_threshold_voltages(max_threshold_voltage, new_threshold_voltage_buffer);
+      }
+
+      // id.i == 4: incoming PMT logic states
+      else if (id.i == 4){
+        byteint new_logic_states[4];
+        for(u_int i=0; i<4; i++){
+          Serial.readBytes(new_logic_states[i].b, sizeof(int));
+          reverse(new_logic_states[i].b, sizeof(int));
+        }
+        set_logic_states(logic_states, new_logic_states);
       }
 
       // id == 10: request for current voltages
@@ -440,7 +493,13 @@ void loop() {
       else if (id.i == 60){
         send_max_thresh_voltages(max_threshold_voltage);
       }
+
+      // id==70: request for current logic states
+      else if (id.i == 70){
+        send_logic_states(logic_states);
+      }
   }
+
 
   // ---- Check run state ---- //
   // run_state == 0 means off, so go back to top of loop (return) and wait to turn on
@@ -449,13 +508,96 @@ void loop() {
     return;
   }
 
+
   // ---- Cell selection ---- //
   
   // --- Detecting fluoresence on all 4 color channels --- //
   measure_voltages(adc, current_voltage);
-
   measurement_time = micros() - time0.i;
-   
+
+  // --- Calculating logical condition --- //
+  bool should_we_capture_cell = false; // default to FALSE, possibly set to true after looking at all channels
+  
+  u_int n_nots = 0;
+  u_int n_ors  = 0;
+  u_int n_ands = 0;                   // number of each TRUE condition, across all channels
+
+  bool stop_checking_ands = false;    // if one AND channel has no signal, don't check others
+  
+  bool positive_signals[4] = {false,false,false,false};  // stores which channels were positive for cell_count logging only
+  for (u_int i=0; i<4; i++){
+    positive_signals[i] = (current_voltage[i].i > min_threshold_voltage[i].i) && (current_voltage[i].i < max_threshold_voltage[i].i);
+  }
+  
+  for (u_int i=0; i<4; i++){
+    bool is_positive_signal = (positive_signals[i]);
+    
+    switch(logic_states[i].i) {
+      
+      // check for NOT conditions first
+      case 3: {
+        if(is_positive_signal){
+          n_nots += 1;
+          break;
+        }
+      }
+      
+      // check for OR (inclusive) conditions second:
+      case 1: {
+        if(is_positive_signal){
+          n_ors += 1;
+          break;
+        }
+      }
+
+      // check for AND conditions last:
+      case 2: {
+        if (stop_checking_ands){
+          break;
+        }
+        
+        if(is_positive_signal){
+          n_ands += 1;
+        } 
+        else {
+          n_ands = 0;
+          stop_checking_ands = true;
+        }
+      }
+    }
+  }
+
+  if (n_nots == 0 && (n_ors > 0 || n_ands > 1)) { // need minimum of 2 TRUE conditions for AND to make sense
+    should_we_capture_cell = true;
+  }
+  else {
+    return; // no conditions met, don't select a cell, start over from the top of the main loop immediately
+  }
+
+  // --- Checking that we haven't hit ANY of the max cell counts on channels with positive signals --- //
+  for (u_int i=0; i<4; i++){
+    if (positive_signals[i] == true){
+      if(current_cell_count[i].i >= max_cell_count[i].i){
+         should_we_capture_cell = false; // positive signal on channel we are full of - don't pick cell
+      }
+    }
+  }
+
+  // --- Sending signal to to trigger selection electrode if required --- //
+  if (should_we_capture_cell){
+    digitalWrite(ELECTRODEPIN, HIGH);
+    delayMicroseconds(ELECTRODE_ON_TIME);
+    digitalWrite(ELECTRODEPIN, LOW);
+    for (u_int i=0; i<4; i++){
+      if(positive_signals[i] == true){
+        current_cell_count[i].i += 1;
+      }
+    }
+  }
+
+
+
+/*  
   // --- Comparing voltages to thresholds and times in state (above min threshold voltage, below max) --- //
   for(u_int i=0; i<4; i++){
     if((current_voltage[i].i > min_threshold_voltage[i].i) && (current_voltage[i].i < max_threshold_voltage[i].i)){
@@ -489,7 +631,7 @@ void loop() {
       }
     }
   }
-
+*/
   Serial.flush();
   time1.i = (micros() - time0.i);
 
@@ -501,9 +643,9 @@ void loop() {
 
 
   // debugging - timing of the main loop needs to be < ~25us for reliable detection
-  // set if(0) for off, if(1) for on (WILL SLOW DOWN LOOP)
+  // set if(false) for off, if(true) for on (WILL SLOW DOWN LOOP)
  
-  if(0) {
+  if(false) {
   Serial.write(255);
   Serial.print(" ID");
   Serial.print(id.i);
@@ -531,6 +673,11 @@ void loop() {
     Serial.print(max_cell_count[i].i);
     Serial.print(" ");
   } 
+  Serial.print(" LOGIC_STATES: ");
+  for(u_int i=0; i<4; i++){
+    Serial.print(logic_states[i].i);
+    Serial.print(" ");
+  }
   Serial.print("\n"); 
   }
 
