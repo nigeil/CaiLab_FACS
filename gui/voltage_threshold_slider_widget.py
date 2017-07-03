@@ -14,7 +14,7 @@ class VoltageThresholdSliderWidget(BoxLayout):
         ret = []
         for slider in self.sliders:
             ret.append(slider.get_slider_val())
-        ret = list(reversed(ret))
+        #ret = list(reversed(ret))
         return ret
 
     def __init__(self, title_text="Selection Threshold (mV)", **kwargs):

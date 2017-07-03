@@ -142,6 +142,9 @@ void measure_voltages(ADC* adc, byteint* voltages){
   voltages[1].i = (adc->analogRead(GREENPIN))  * (AREF_VAL / ARES) * VOLTAGE_DIV_FACTOR;
   voltages[2].i = (adc->analogRead(BLUEPIN))   * (AREF_VAL / ARES) * VOLTAGE_DIV_FACTOR;
   voltages[3].i = (adc->analogRead(YELLOWPIN)) * (AREF_VAL / ARES) * VOLTAGE_DIV_FACTOR;
+  //voltages[0].i = 0;
+  //voltages[2].i = 0;
+  //voltages[3].i = 0;
   return;
 }
 
@@ -345,7 +348,8 @@ void setup() {
   adc->setReference(AREF, ADC_1);
   adc->setSamplingSpeed(ASAMPSPEED);
   adc->setConversionSpeed(ACONVSPEED);
-  adc->setAveraging(4);   // set number of averages
+  adc->setAveraging(8
+  );   // set number of averages
   adc->setResolution(16); // set bits of resolution
 
   //set electrode (digital) pin to output, analogs to input
@@ -364,7 +368,7 @@ void setup() {
     max_cell_count[i].i = std::numeric_limits<unsigned int>::max();
     logic_states[i].i = 0;
   }
-  run_state.i = 1; // DEBUG: turn it on
+  run_state.i = 0; // DEBUG: turn it on
 }
 
 

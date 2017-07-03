@@ -12,7 +12,6 @@ class LogicStatesDisplayWidget(BoxLayout):
     # Class helper functions
     def update_logic_states(self, instance):
         self.logic_states = self.mc.get_logic_states()
-        print("[DEBUG] self.logic_states = " + str(self.logic_states))
         for i in range(0,4):
             the_state = ""
             if (self.logic_states[i] == 0):

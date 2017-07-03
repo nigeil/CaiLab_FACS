@@ -13,17 +13,20 @@ voltages_list = []
 i = 0
 n_itr = 10000
 
-#mc = serial.Serial('/dev/ttyACM0', timeout=0.001, rtscts=True)
-mc = serial.Serial('/dev/ttyACM0', 250000, timeout=10.0, rtscts=True)
+mc = serial.Serial('/dev/ttyACM0', timeout=1.0, rtscts=True)
+#mc = serial.Serial('/dev/ttyACM0', 250000, timeout=10.0, rtscts=True)
+print("[STATUS] teensy found")
 sio = io.TextIOWrapper(io.BufferedRWPair(mc, mc))
 
 while (i < n_itr):
     dat = sio.readline()
+    print("[DEBUG] dat = " + str(dat))
     if dat is not '':
         t = re.findall(r'TIME: (.*?) RUNSTATE:',dat)
         if (t not in[[], None]):
             t = int(t[0])
             t_list.append(t)
+            print(t)
             i += 1
         voltages = re.findall(r'CURR_VOLTAGES: (.*?) THRESH_VOLTAGES:', dat)
         if (voltages not in [[], None]):

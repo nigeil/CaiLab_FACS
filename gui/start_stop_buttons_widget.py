@@ -18,9 +18,9 @@ class StartButton(Button):
     cell_count_clock = None
     logic_state_clock = None
     voltage_refresh_rate = 1.0/20000.0
-    threshold_voltage_refresh_rate = 1.0/100.0
-    cell_count_refresh_rate = 1.0/100.0
-    logic_states_refresh_rate = 1.0/100.0
+    threshold_voltage_refresh_rate = 1.0/30.0
+    cell_count_refresh_rate = 1.0/30.0
+    logic_states_refresh_rate = 1.0/30.0
     
     # Class helper functions
     def get_running_status(self):
@@ -50,6 +50,11 @@ class StartButton(Button):
             self.logic_states_display_clock = Clock.schedule_interval(
                         self.logic_states_display.update_logic_states, self.logic_states_refresh_rate)
             
+            self.time_clock = Clock.schedule_interval(self.mc.parse_loop_time, self.logic_states_refresh_rate)
+            def time_display(dt=0):
+               print("[DEBUG] loop time: " + str(self.mc.get_current_loop_time()) + " us")
+            self.time_display_clock = Clock.schedule_interval(time_display, self.logic_states_refresh_rate)
+            
         elif (self.running_status == False):
             self.mc.send_run_state(False) # tell microcontroller to stop sorting
             #self.realtime_stats.set_running_status(False) # tell plotter to stop plotting
@@ -62,6 +67,8 @@ class StartButton(Button):
             self.threshold_voltage_display_clock.cancel()
             self.logic_states_clock.cancel()
             self.logic_states_display_clock.cancel()
+            self.time_clock.cancel()
+            self.time_display_clock.cancel()
              
         elif (self.running_status == "Paused"):
             self.mc.send_run_state("Paused")
@@ -72,6 +79,8 @@ class StartButton(Button):
             self.threshold_voltage_display_clock.cancel()
             self.logic_states_clock.cancel()
             self.logic_states_display_clock.cancel()
+            self.time_clock.cancel()
+            self.time_display_clock.cancel()
 
     def set_text(self, new_text):
         self.text = new_text

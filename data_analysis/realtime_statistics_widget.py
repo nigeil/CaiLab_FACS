@@ -4,12 +4,15 @@
 # the microcontroller.
 
 
-import matplotlib as mpl
-import pylab as plt
+#import matplotlib as mpl
+#import pylab as plt
+from PyQt5 import QtGui, QtCore
+import sys
+import pyqtgraph as pg
 import numpy as np
 from collections import deque
 
-class RealtimeStatisticsWidget():
+class RealtimeStatisticsWidget(QtGui.QWidget):
     # Class variables
     max_voltage = 1200 # mV
     bin_width = 10     # mV
@@ -30,56 +33,58 @@ class RealtimeStatisticsWidget():
 
 
     # given new values for all bars, redraws canvas
-    def update_plot(self,dt):
+    def update_plot(self):
         # update new histogram bar heights
         self.update_histogram_heights()
         # update the y_axis and redraw
-        #self.ax.draw_artist(self.ax.patch)
         for i in range(0, 4):
-            for rect, y in zip(self.bars[i], self.heights[i]):
-                rect.set_height(y)
-            #self.ax.draw_artist(self.bars[i])
-        self.fig.canvas.draw()
-        #self.fig.canvas.update()
-        #self.fig.canvas.flush_events()
+            self.plots[i].setData(self.bins, self.heights[i], color=self.colors[i])
 
     # Class initialization
     def __init__(self, data_stream):
        # initialize super class ()
+       super(RealtimeStatisticsWidget, self).__init__()
 
        # grab parameters and save to class
        self.data_stream = data_stream
 
-       # initialize the plot
-       self.fig = plt.figure(facecolor='#ffffff')
-       self.ax = self.fig.add_subplot(111)
-       self.ax.set_facecolor('#afafaf')
-       self.bars = []
+       # initialize the widget
        self.colors = ["#ff0400", "#2dff38", "#0256f2", "#f2f202"]
        self.labels = ["Red", "Green", "Blue", "Yellow"]
-       self.update_histogram_heights()
 
-       for i in range(0, len(self.heights)):
-           self.bars.append(self.ax.bar(self.bins, self.heights[i],
-                                          color=self.colors[i],
-                                          label=self.labels[i]))
+       self.timer = pg.QtCore.QTimer()
+       self.timer.timeout.connect(self.update_plot)
+       self.timer.start(10)
+
+       self.setWindowTitle("Real time histogram")
+       self.layout = QtGui.QGridLayout()
+       self.setLayout(self.layout)
+
+       self.plotwidgets = [pg.PlotWidget(title=self.labels[i]) for i in range(0, 4)]
+       grid_rows = [0,0,1,1]
+       grid_cols = [0,1,0,1]
+       for i in range(0, 4):
+           self.layout.addWidget(self.plotwidgets[i], grid_rows[i], grid_cols[i])
+
+       self.show()
+
+
+
+       self.plots = [pg.PlotCurveItem(color=self.colors[i]) for i in range(0, 4)]
+       self.axes = [self.plotwidgets[i].addItem(self.plots[i]) for i in range(0, 4)]
+       self.update_plot()
        
-       self.ax.set_yscale("log")
-       self.ax.set_xlabel("Binned voltage (mV)")
-       self.ax.set_ylabel("Log count")
-       self.ax.set_title("4 channel real voltage histogram")
-       plt.show(block=False)
-       self.fig.canvas.draw()
+       for p in self.plotwidgets:
+            p.setLogMode(x=None, y=None)
+            p.setLabel(axis="bottom", text="Binned voltage (mV)")
+            p.setLabel(axis="left", text="Log count")
 
 # testing
 if __name__ == "__main__":
     def data_stream():
         return np.random.uniform(0,1200,(100,4)) 
 
+    app = QtGui.QApplication(sys.argv)
     plot_widget = RealtimeStatisticsWidget(data_stream)
-    i = 0
-    while True:
-        if (i % 10 == 0):
-            plot_widget.update_plot(1/25)
-        i = i + 1
+    sys.exit(app.exec_())
 

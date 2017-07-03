@@ -3,6 +3,7 @@
 # setter/getter functions. Also handles data buffering and storage.
 
 import serial
+from serial.tools import list_ports
 from collections import deque
 from struct import *
 
@@ -11,11 +12,13 @@ class Microcontroller():
     ## most recent values
     current_voltages = [0, 0, 0, 0]
     current_cell_counts = [0, 0, 0, 0] 
-    current_loop_time = 0
+    current_loop_time = 1 
     min_threshold_voltages = [0, 0, 0, 0]    
     max_threshold_voltages = [0, 0, 0, 0]    
     max_cell_counts = [0, 0, 0, 0] 
     logic_states = [1,1,1,1]
+    voltage_bins = []
+
     ## buffered values
     voltage_buffer = deque([], maxlen=20000)
     cell_count_buffer = deque([], maxlen=20000)
@@ -28,6 +31,8 @@ class Microcontroller():
     debug_data = ""
     ## conversion factor for voltages (everything should be expressed in mV)
     voltage_div_factor = 1000.0
+    ## number of bins in the voltage histogram from the microcontroller
+    n_bins = 50
 
     # Class helper functions
     def bytes_to_int(self, the_bytes):
@@ -38,6 +43,12 @@ class Microcontroller():
 
     def many_bytes_to_ints(self, the_bytes):
         return unpack(">IIII", the_bytes)
+
+    def voltage_bins_bytes_to_ints(self, the_bytes):
+        the_str = ">"
+        for i in range(0, 4*self.n_bins):
+            the_str += "I"
+        return unpack(the_str, the_bytes)
 
     def get_current_voltages(self):
         return self.current_voltages
@@ -78,6 +89,13 @@ class Microcontroller():
     def get_logic_states(self):
         return self.logic_states
 
+    def get_voltage_bins(self):
+        # make it into a nice 4xn_bins 2D array instead of flattened
+        ret = []
+        for i in range(0, 4):
+            ret.append(self.voltage_bins[i*self.n_bins:(i+1)*self.n_bins])
+        return ret
+
     def get_debug_data(self):
         return self.debug_data
 
@@ -108,6 +126,8 @@ class Microcontroller():
         elif (data_id == 3):
             in_bytes = self.microcontroller.read(size=4)
             self.current_loop_time = self.bytes_to_int(in_bytes)
+            print("[DEBUG] in_bytes = " + str(in_bytes))
+            print("[DEBUG] self.current_loop_time = " + str(self.current_loop_time))
             self.loop_time_buffer.append(self.current_loop_time)
             self.loop_time_storage.append(self.current_loop_time)
         # recieved minimum threshold voltages 
@@ -126,6 +146,10 @@ class Microcontroller():
         elif (data_id == 7):
             in_bytes = self.microcontroller.read(size=4*4)
             self.logic_states = self.many_bytes_to_ints(in_bytes)
+        # recieved voltage bins
+        elif (data_id == 8):
+            in_bytes = self.microcontroller.read(size=4*self.n_bins*4)
+            self.voltage_bins = self.voltage_bins_bytes_to_ints(in_bytes)
         # recieved debug data
         elif (data_id == 255):
             self.debug_data = self.microcontroller.readline()
@@ -146,6 +170,12 @@ class Microcontroller():
 
     def parse_logic_states(self, dt=0):
         self.parse_data(70)
+
+    def parse_voltage_bins(self, dt=0):
+        self.parse_data(80)
+
+    def parse_loop_time(self, dt=0):
+        self.parse_data(30)
 
     def send_run_state(self, state):
         if   (state == True):
@@ -205,12 +235,27 @@ class Microcontroller():
         self.microcontroller.flush()
         return
 
+    
+    def determine_serial_port(self, serial_id):
+        ports = list(list_ports.grep(str(serial_id)))
+        if (ports != []):
+            ret = str(ports[0].device)
+        else:
+            print("[ERROR] device w/serial id: " + str(serial_id) + " was not found.")
+            ret = "NO DEVICE FOUND CONNECTED TO PORTS"
+        return ret
+
 
     # Class initialization
     def __init__(self):
-        self.microcontroller = serial.Serial('/dev/ttyACM0', timeout=0.001, rtscts=True)
+        #port = self.determine_serial_port("2539240") #active
+        #port = self.determine_serial_port("2539720") #dead
+        port = self.determine_serial_port("2839790")  #testing
+
+        self.microcontroller = serial.Serial(port, timeout=0.001, rtscts=True)
         self.microcontroller.reset_input_buffer()
         self.microcontroller.reset_output_buffer()
+        self.voltage_bins = [0 for i in range(0, self.n_bins * 4)]
 
 
 # testing
@@ -230,14 +275,16 @@ if __name__ == "__main__":
         if i==30:
             mc.send_max_cell_counts(new_cell_counts)
         if i==50:
-            mc.send_logic_stats(new_logic_states)
-        mc.parse_data(10)
-        mc.parse_data(20)
+            mc.send_logic_states(new_logic_states)
+        #mc.parse_data(10)
+        #mc.parse_data(20)
         mc.parse_data(30)
-        mc.parse_data(40)
-        mc.parse_data(50)
-        mc.parse_data(60)
-        mc.parse_data(70)
+        time.sleep(1)
+        #mc.parse_data(40)
+        #mc.parse_data(50)
+        #mc.parse_data(60)
+        #mc.parse_data(70)
+        #mc.parse_data(80)
         
         print("Voltages                   (mV): " + str(mc.get_current_voltages()))
         print("Minimum threshold voltages (mV): " + str(mc.get_min_threshold_voltages()))
@@ -246,6 +293,7 @@ if __name__ == "__main__":
         print("Max cell counts            (#) : " + str(mc.get_max_cell_counts()))
         print("Logic states               (#) : " + str(mc.get_logic_states()))
         print("Loop time                  (us): " + str(mc.get_current_loop_time()))
+        #print("Voltage bins               (mv): " + str(mc.get_voltage_bins()))
         print("Voltage buffer: " + str(mc.get_voltage_buffer()))
        
     mc.send_run_state(False)
