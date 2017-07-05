@@ -126,8 +126,6 @@ class Microcontroller():
         elif (data_id == 3):
             in_bytes = self.microcontroller.read(size=4)
             self.current_loop_time = self.bytes_to_int(in_bytes)
-            print("[DEBUG] in_bytes = " + str(in_bytes))
-            print("[DEBUG] self.current_loop_time = " + str(self.current_loop_time))
             self.loop_time_buffer.append(self.current_loop_time)
             self.loop_time_storage.append(self.current_loop_time)
         # recieved minimum threshold voltages 

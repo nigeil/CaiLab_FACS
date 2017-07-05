@@ -19,6 +19,7 @@
 // digital pin for triggering electrode (droplet selection)
 #define ELECTRODEPIN 2
 #define ELECTRODE_ON_TIME 100 // in us
+#define PAUSE_AFTER_SELECTION_TIME 1000 // in us
 
 // digital pin for LED status light (HIGH if runstate == 1, running)
 #define LEDSTATUSPIN 0
@@ -38,6 +39,6 @@
 #define AMAX_VAL int(AREF_VAL * VOLTAGE_DIV_FACTOR)
 
 // times required to be in above-min-threshold state before triggering
-#define REQUIRED_TIME 20  // in us
+#define REQUIRED_TIME_ABOVE_MIN 25  // in us
 
 #endif
