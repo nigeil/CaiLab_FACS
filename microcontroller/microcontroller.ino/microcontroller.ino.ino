@@ -33,7 +33,7 @@
 
 // digital pin for triggering electrode (droplet selection)
 #define ELECTRODEPIN 2
-#define ELECTRODE_ON_TIME 100 // in us
+#define ELECTRODE_ON_TIME 1000 // in us
 
 // digital pin for LED status light (HIGH if runstate == 1, running)
 #define LEDSTATUSPIN 0
@@ -142,6 +142,7 @@ void measure_voltages(ADC* adc, byteint* voltages){
   voltages[1].i = (adc->analogRead(GREENPIN))  * (AREF_VAL / ARES) * VOLTAGE_DIV_FACTOR;
   voltages[2].i = (adc->analogRead(BLUEPIN))   * (AREF_VAL / ARES) * VOLTAGE_DIV_FACTOR;
   voltages[3].i = (adc->analogRead(YELLOWPIN)) * (AREF_VAL / ARES) * VOLTAGE_DIV_FACTOR;
+  
   //voltages[0].i = 0;
   //voltages[2].i = 0;
   //voltages[3].i = 0;
@@ -348,10 +349,10 @@ void setup() {
   adc->setReference(AREF, ADC_1);
   adc->setSamplingSpeed(ASAMPSPEED);
   adc->setConversionSpeed(ACONVSPEED);
-  adc->setAveraging(8
-  );   // set number of averages
-  adc->setResolution(16); // set bits of resolution
-
+  adc->setAveraging(4);   // set number of averages
+  //adc->setResolution(16); // set bits of resolution
+  adc->setResolution(12); //2^12 = 4096 -> resolution of 0.8mV, which is 10x smaller than the minimum increment of the slider bars
+  
   //set electrode (digital) pin to output, analogs to input
   pinMode(ELECTRODEPIN, OUTPUT);
   pinMode(LEDSTATUSPIN, OUTPUT);
@@ -575,6 +576,7 @@ void loop() {
     should_we_capture_cell = true;
   }
   else {
+    time1.i = (micros() - time0.i);
     return; // no conditions met, don't select a cell, start over from the top of the main loop immediately
   }
 

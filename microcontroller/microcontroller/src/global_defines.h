@@ -19,7 +19,7 @@
 // digital pin for triggering electrode (droplet selection)
 #define ELECTRODEPIN 2
 #define ELECTRODE_ON_TIME 100 // in us
-#define PAUSE_AFTER_SELECTION_TIME 1000 // in us
+#define PAUSE_AFTER_SELECTION_TIME 250 // in us
 
 // digital pin for LED status light (HIGH if runstate == 1, running)
 #define LEDSTATUSPIN 0
@@ -28,10 +28,10 @@
 #define AREF ADC_REFERENCE::REF_3V3                        // reference voltage setting, 1.2V for low voltages
 #define AREF_VAL 3.3                                       // for calculations, set to voltage of above
 #define ASAMPSPEED ADC_SAMPLING_SPEED::VERY_HIGH_SPEED     // sampling speed; can set it high for low-impedence signals
-#define ACONVSPEED ADC_CONVERSION_SPEED::VERY_HIGH_SPEED     // conversion speed; upclocks the ADC freq at accuracy cost
+#define ACONVSPEED ADC_CONVERSION_SPEED::VERY_HIGH_SPEED   // conversion speed; upclocks the ADC freq at accuracy cost
 #define ARES adc->getMaxValue(ADC_0)                       // analog resolution, set to be the same for both ADCs0&1
 #define N_AVERAGES 1                                       // the number of averages the ADC takes before returning a values
-#define ARES_BITS 16                                       // analog resolution in bits
+#define ARES_BITS 8                                        // analog resolution in bits, 8 is the lowest we can use (256 levels -> ~13mV per level)
 
 // Division factor for converting integer voltages to floats
 // i.e. INPUT: [0, max(int)] -> OUTPUT: [0/float_div_factor, max(int)/float_div_factor]
@@ -39,6 +39,6 @@
 #define AMAX_VAL int(AREF_VAL * VOLTAGE_DIV_FACTOR)
 
 // times required to be in above-min-threshold state before triggering
-#define REQUIRED_TIME_ABOVE_MIN 25  // in us
+#define REQUIRED_TIME_ABOVE_MIN 15  // in us
 
 #endif

@@ -18,9 +18,9 @@ class StartButton(Button):
     cell_count_clock = None
     logic_state_clock = None
     voltage_refresh_rate = 1.0/20000.0
-    threshold_voltage_refresh_rate = 1.0/30.0
-    cell_count_refresh_rate = 1.0/30.0
-    logic_states_refresh_rate = 1.0/30.0
+    threshold_voltage_refresh_rate = 1.0/25.0
+    cell_count_refresh_rate = 1.0/25.0
+    logic_states_refresh_rate = 1.0/25.0
     
     # Class helper functions
     def get_running_status(self):

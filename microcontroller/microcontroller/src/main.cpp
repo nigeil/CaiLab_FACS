@@ -38,13 +38,13 @@ byteint max_threshold_voltage[N_CHANNELS];                      // {r,g,b,y}
 byteint logic_states[N_CHANNELS];                               // {r,g,b,y}; 0->ignore PMT, 1->logical inclusive OR, 2->logical AND, 3->logical NOT
 
 u_int time_in_state[N_CHANNELS];                                // time that current_voltage[i] > min_threshold_voltage[i]
-bool hit_max_voltage[N_CHANNELS];                               // true when second measurement above threshold is not > previous voltage measurement
+bool turned_from_high_state_to_low[N_CHANNELS];
 
 byteint current_cell_count[N_CHANNELS];                         // {r,g,b,y} in range [0, 65536]
 byteint max_cell_count[N_CHANNELS];                             // as above, but current_cell_count[i] <= max_cell_count[i];
                                                                 // stop selecting cells of this color after maximum number are selected.
 
-ADC* adc;                                              // pointer to what will be the analog-to-digital converter object
+ADC* adc;                                                       // pointer to the ADC controller object
 
 byteint time0;                                          // start time
 byteint time1;                                          // total time taken for 1 loop
@@ -69,10 +69,14 @@ void setup() {
   adc = new ADC();
   adc->setReference(AREF, ADC_0);
   adc->setReference(AREF, ADC_1);
-  adc->setSamplingSpeed(ASAMPSPEED);
-  adc->setConversionSpeed(ACONVSPEED);
-  adc->setAveraging(N_AVERAGES);   // set number of averages
-  adc->setResolution(ARES_BITS); // set bits of resolution
+  adc->setSamplingSpeed(ASAMPSPEED, ADC_0);
+  adc->setSamplingSpeed(ASAMPSPEED, ADC_1);
+  adc->setConversionSpeed(ACONVSPEED, ADC_0);
+  adc->setConversionSpeed(ACONVSPEED, ADC_1);
+  adc->setAveraging(N_AVERAGES, ADC_0);
+  adc->setAveraging(N_AVERAGES, ADC_1);
+  adc->setResolution(ARES_BITS, ADC_0);
+  adc->setResolution(ARES_BITS, ADC_1);
 
   //set electrode (digital) pin to output, analogs to input
   pinMode(ELECTRODEPIN, OUTPUT);
@@ -92,7 +96,7 @@ void setup() {
     max_cell_count[i].i = std::numeric_limits<unsigned int>::max();
     logic_states[i].i = 0;
     time_in_state[i] = 0;
-    hit_max_voltage[i] = false;
+    turned_from_high_state_to_low[i] = false;
   }
   run_state.i = 0;
 }
@@ -149,7 +153,7 @@ void loop() {
               max_cell_count[i].i = std::numeric_limits<unsigned int>::max();
               logic_states[i].i = 0;
               time_in_state[i] = 0;
-              hit_max_voltage[i] = false;
+              turned_from_high_state_to_low[i] = false;
             }
           }
         }
@@ -194,6 +198,7 @@ void loop() {
             reverse(new_logic_states[i].b, sizeof(int));
           }
           set_logic_states(logic_states, new_logic_states);
+          //set_ADC_modes(adc, pins, logic_states);
         }
 
         // id == 10: request for current voltages
@@ -251,72 +256,48 @@ else { //in test mode, so keep the runstate as ON
   // ---- Cell selection ---- //
   // --- Detecting fluoresence on all N_CHANNELS color channels --- //
 
-  // store last loop's voltages
-
-  for(u_int i=0; i<N_CHANNELS; i++){
-    previous_voltage[i].i = current_voltage[i].i;
-  }
 
   // measure the new voltages, calculate measurement time
+  // repeat on every loop; if we find that at least one channel is
+  // above the minimum voltage, the while measurement loop below this
+  // will be triggered, until the voltage falls again (a peak has passed)
   measure_voltages(adc, pins, logic_states, current_voltage);
   measurement_time = micros() - time0.i;
-
-
-  // check if voltages are above minimum threshold and, furthermore, if they are just crossing from below min to above
-  // if so, start the timer; if they were already above, continue the timer and search for maximum voltage
   for(u_int i=0; i<N_CHANNELS; i++){
-
-    if(current_voltage[i].i >= min_threshold_voltage[i].i){   // currently above the minimum threshold
-      if(previous_voltage[i].i < min_threshold_voltage[i].i){ //crossing from below min to above
-        time_in_state[i] = measurement_time;
-        max_voltage[i].i = current_voltage[i].i;
-        hit_max_voltage[i] = false;
-      }
-
-      // TODO: error is here, first if statement gets triggered for sure but the following else does not (or so it seems)
-      else{                                                   // was previously above minimum voltage threshold
-        time_in_state[i] += measurement_time;
-        if(current_voltage[i].i >= max_voltage[i].i){
-          max_voltage[i].i = current_voltage[i].i;
-        }
-        else{
-          hit_max_voltage[i] = true;
-        }
-      }
-    }
-
-    else if(previous_voltage[i].i >= min_threshold_voltage[i].i){ // just dropped below minimum, was previously above minimum;
-                                                                  // treats the edge case where only one loop cycle has a voltage above the minimum
-      hit_max_voltage[i] = true;
-    }
-
-    else{
-      // TODO: rigorous testing to show this is unnecessary, as it is a catchall for the  below minimum threshold case
-      if(previous_voltage[i].i < min_threshold_voltage[i].i){ // signal below min for 2 loops, reset these triggers/measurements
-        hit_max_voltage[i] = false;
-        max_voltage[i].i = 0;
-        time_in_state[i] = 0;
-      }
+    if(current_voltage[i].i >= min_threshold_voltage[i].i){
+      time_in_state[i] = measurement_time;
     }
   }
 
+  while(at_least_one_channel_is_above_minimum(current_voltage, min_threshold_voltage, max_threshold_voltage, logic_states)){
+       for(u_int i=0; i<N_CHANNELS; i++){
+         previous_voltage[i].i = current_voltage[i].i;
+       }
+       measure_voltages(adc, pins, logic_states, current_voltage);
+       measurement_time = micros() - time0.i;
+       for(u_int i=0; i<N_CHANNELS; i++){
+         if(current_voltage[i].i >= min_threshold_voltage[i].i){
+           time_in_state[i] += measurement_time;
+           if(current_voltage[i].i > max_voltage[i].i){
+             max_voltage[i].i = current_voltage[i].i;
+           }
+         }
+       }
+     }
 
   // test if signal is maximum and, if so, how long it has been in an above-minimum state
   // if all criteria are met, set positive_signals[i] = true, false otherwise
   bool positive_signal[N_CHANNELS];
   for(u_int i=0; i<N_CHANNELS; i++){
-    if(true){ // TODO: smarter logic to replace the hit_max_voltage logic. Issue-ridden
-    //if(hit_max_voltage[i] == true){
-      if(time_in_state[i] >= REQUIRED_TIME_ABOVE_MIN){
-        if(max_voltage[i].i <= max_threshold_voltage[i].i){
-          positive_signal[i] = true;
-        }
-      }
+    if((time_in_state[i] >= REQUIRED_TIME_ABOVE_MIN) \
+    && (max_voltage[i].i <= max_threshold_voltage[i].i)){
+        positive_signal[i] = true;
     }
     else{
       positive_signal[i] = false;
     }
   }
+
 
   // --- Calculating logical condition --- //
   bool should_we_capture_cell = false; // default to FALSE, possibly set to true after looking at all channels
@@ -327,8 +308,6 @@ else { //in test mode, so keep the runstate as ON
 
   bool stop_checking_ands = false;    // if one AND channel has no signal, don't check others
 
-
-
   for (u_int i=0; i<N_CHANNELS; i++){
     bool is_positive_signal = (positive_signal[i]);
 
@@ -338,16 +317,16 @@ else { //in test mode, so keep the runstate as ON
       case 3: {
         if(is_positive_signal){
           n_nots += 1;
-          break;
         }
+        break;
       }
 
       // check for OR (inclusive) conditions second:
       case 1: {
         if(is_positive_signal){
           n_ors += 1;
-          break;
         }
+        break;
       }
 
       // check for AND conditions last:
@@ -359,10 +338,11 @@ else { //in test mode, so keep the runstate as ON
         if(is_positive_signal){
           n_ands += 1;
         }
-        else {
+        else { // one of the AND channels isn't a good signal; stop checking
           n_ands = 0;
           stop_checking_ands = true;
         }
+        break;
       }
     }
   }
@@ -394,11 +374,25 @@ else { //in test mode, so keep the runstate as ON
         current_cell_count[i].i += 1;
       }
       // reset these things, start fresh for next signal
-      hit_max_voltage[i] = false;
       max_voltage[i].i = 0;
       time_in_state[i] = 0;
+      previous_voltage[i].i = 0;
+      current_voltage[i].i = 0;
     }
     delayMicroseconds(PAUSE_AFTER_SELECTION_TIME); // TODO: replace with less arbitrary pause time; until voltage drops below min?
+  }
+  else{
+    for(u_int i=0; i<N_CHANNELS; i++){
+      max_voltage[i].i = 0;
+      time_in_state[i] = 0;
+      previous_voltage[i].i = 0;
+      current_voltage[i].i = 0;
+    }
+  }
+
+  // store last loop's voltages
+  for(u_int i=0; i<N_CHANNELS; i++){
+    previous_voltage[i].i = current_voltage[i].i;
   }
 
   Serial.flush();
