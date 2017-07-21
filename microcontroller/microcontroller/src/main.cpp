@@ -269,6 +269,7 @@ else { //in test mode, so keep the runstate as ON
     }
   }
 
+  u_int while_loop_count = 0; // how many iterations the while loop has gone under
   while(at_least_one_channel_is_above_minimum(current_voltage, min_threshold_voltage, max_threshold_voltage, logic_states)){
        for(u_int i=0; i<N_CHANNELS; i++){
          previous_voltage[i].i = current_voltage[i].i;
@@ -282,6 +283,15 @@ else { //in test mode, so keep the runstate as ON
              max_voltage[i].i = current_voltage[i].i;
            }
          }
+       }
+       while_loop_count += 1;
+       // in the loop too long, likely a user error (connected a non-ignore channel to a floating input); //reset things and break out. TODO: replace with GUI-level sanity checking
+       if((while_loop_count * measurement_time) > MAX_TIME_IN_WHILE_LOOP){
+         for(u_int i=0; i<N_CHANNELS; i++){
+           time_in_state[i] = 0;
+           max_voltage[i].i = 0;
+         }
+         break;
        }
      }
 

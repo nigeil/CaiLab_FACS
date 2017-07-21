@@ -246,9 +246,9 @@ class Microcontroller():
 
     # Class initialization
     def __init__(self):
-        #port = self.determine_serial_port("2539240") #active
+        port = self.determine_serial_port("2539240") #active
         #port = self.determine_serial_port("2539720") #dead
-        port = self.determine_serial_port("2839790")  #testing
+        #port = self.determine_serial_port("2839790")  #testing
 
         self.microcontroller = serial.Serial(port, timeout=0.001, rtscts=True)
         self.microcontroller.reset_input_buffer()

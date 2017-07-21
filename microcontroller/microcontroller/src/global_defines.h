@@ -41,4 +41,9 @@
 // times required to be in above-min-threshold state before triggering
 #define REQUIRED_TIME_ABOVE_MIN 15  // in us
 
+// maximum time to stay in the measurement while loop
+// really only used to make sure that we don't get stuck in the while loop when
+// some channels are not set to IGNORE but are still connected to floating voltages
+#define MAX_TIME_IN_WHILE_LOOP 500 // us
+ 
 #endif
