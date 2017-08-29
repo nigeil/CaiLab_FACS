@@ -31,10 +31,14 @@ class MainWindow(App):
     def my_data_stream(self):
         return np.random.uniform(4,1200, (100,4))
 
+    def keep_microcontroller_connceted(self, dt):
+        if (self.mc.serial_is_active() == False):
+            self.mc.reset()
+
     def build(self):
         # create the microcontroller object and schedule its data refresh
         self.mc = Microcontroller()
-        #self.mc_refresh_clock = Clock.schedule_interval(lambda dt: self.mc.parse_all_data, 0.5)
+        self.mc_check_clock = Clock.schedule_interval(self.keep_microcontroller_connceted, 1)
 
         self.root_widget = BoxLayout(orientation="horizontal")
         

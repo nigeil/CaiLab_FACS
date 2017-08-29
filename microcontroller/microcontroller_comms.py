@@ -244,17 +244,25 @@ class Microcontroller():
         return ret
 
 
-    # Class initialization
-    def __init__(self):
-        port = self.determine_serial_port("2539240") #active
-        #port = self.determine_serial_port("2539720") #dead
-        #port = self.determine_serial_port("2839790")  #testing
+    def serial_is_active(self):
+        if (self.microcontroller.is_open == True):
+            return True
+        else:
+            return False
 
-        self.microcontroller = serial.Serial(port, timeout=0.001, rtscts=True)
+    def reset(self):
+        #port = self.determine_serial_port("2539240") #active
+        #port = self.determine_serial_port("2539720") #dead
+        port = self.determine_serial_port("2839790")  #testing
+
+        self.microcontroller = serial.Serial(port, timeout=0.01, rtscts=True)
         self.microcontroller.reset_input_buffer()
         self.microcontroller.reset_output_buffer()
         self.voltage_bins = [0 for i in range(0, self.n_bins * 4)]
 
+    # Class initialization
+    def __init__(self):
+        self.reset()
 
 # testing
 if __name__ == "__main__":

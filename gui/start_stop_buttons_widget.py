@@ -17,10 +17,11 @@ class StartButton(Button):
     voltage_clock = None
     cell_count_clock = None
     logic_state_clock = None
-    voltage_refresh_rate = 1.0/20000.0
-    threshold_voltage_refresh_rate = 1.0/25.0
-    cell_count_refresh_rate = 1.0/25.0
-    logic_states_refresh_rate = 1.0/25.0
+    #voltage_refresh_rate = 1.0/20000.0 #for realtime display, not implemented
+    threshold_voltage_refresh_rate = 1.0/2.0
+    cell_count_refresh_rate = 1.0/2.0
+    logic_states_refresh_rate = 1.0/2.0
+    debug_loop_time_refresh_rate = 1/3.0
     
     # Class helper functions
     def get_running_status(self):
@@ -50,10 +51,10 @@ class StartButton(Button):
             self.logic_states_display_clock = Clock.schedule_interval(
                         self.logic_states_display.update_logic_states, self.logic_states_refresh_rate)
             
-            self.time_clock = Clock.schedule_interval(self.mc.parse_loop_time, self.logic_states_refresh_rate)
+            self.time_clock = Clock.schedule_interval(self.mc.parse_loop_time, self.debug_loop_time_refresh_rate)
             def time_display(dt=0):
                print("[DEBUG] loop time: " + str(self.mc.get_current_loop_time()) + " us")
-            self.time_display_clock = Clock.schedule_interval(time_display, self.logic_states_refresh_rate)
+            self.time_display_clock = Clock.schedule_interval(time_display, self.debug_loop_time_refresh_rate)
             
         elif (self.running_status == False):
             self.mc.send_run_state(False) # tell microcontroller to stop sorting

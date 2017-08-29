@@ -11,6 +11,7 @@
 #define N_CHANNELS 4
 
 // analog pins for reading fluorescent voltage signals
+/* old
 #define REDPIN    A0
 #define GREENPIN  A1
 #define BLUEPIN   A2
@@ -18,11 +19,22 @@
 
 // digital pin for triggering electrode (droplet selection)
 #define ELECTRODEPIN 2
+*/
+
+// new
+#define REDPIN    A5
+#define GREENPIN  A4
+#define BLUEPIN   A3
+#define YELLOWPIN A2
+
+// digital pin for triggering electrode (droplet selection)
+#define ELECTRODEPIN 21
 #define ELECTRODE_ON_TIME 100 // in us
 #define PAUSE_AFTER_SELECTION_TIME 250 // in us
 
 // digital pin for LED status light (HIGH if runstate == 1, running)
-#define LEDSTATUSPIN 0
+//#define LEDSTATUSPIN 0 //old
+#define LEDSTATUSPIN A21 //new
 
 // analog settings
 #define AREF ADC_REFERENCE::REF_3V3                        // reference voltage setting, 1.2V for low voltages
@@ -44,6 +56,6 @@
 // maximum time to stay in the measurement while loop
 // really only used to make sure that we don't get stuck in the while loop when
 // some channels are not set to IGNORE but are still connected to floating voltages
-#define MAX_TIME_IN_WHILE_LOOP 500 // us
- 
+#define MAX_TIME_IN_WHILE_LOOP 1000 // us
+
 #endif

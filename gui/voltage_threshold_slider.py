@@ -15,7 +15,7 @@ class VoltageThresholdSlider(BoxLayout):
     # Class helper functions 
     def update_slider_val(self, instance, value):
         self.slider_val = round(float(value),2)
-        self.label.text = (self.label_text + "\n" + "{0:.0f}".format(self.slider_val))
+        self.label.text = (self.label_text + "\n" + "{0:.0f}".format(self.slider_val * 4))
         #self.label.text = self.label_text + "\n" + "{0:.2f}".format(self.slider_val)
         # TODO: send to microcontroller (?, maybe in controller script)
 
