@@ -9,14 +9,15 @@ class ThresholdVoltageDisplayWidget(BoxLayout):
     # Class variables
     min_threshold_voltages = [0,0,0,0]
     max_threshold_voltages = [0,0,0,0]
+    display_multiplier = 3.4 #V_PMT = (this) * V_microcontroller
 
     # Class helper functions
     def update_threshold_voltages(self, instance):
         self.min_threshold_voltages = self.mc.get_min_threshold_voltages()
         self.max_threshold_voltages = self.mc.get_max_threshold_voltages()
         for i in range(0,4):
-            self.min_threshold_voltage_labels[i].text = "min: " + str(self.min_threshold_voltages[i]*4)
-            self.max_threshold_voltage_labels[i].text = "max: " + str(self.max_threshold_voltages[i]*4)
+            self.min_threshold_voltage_labels[i].text = "min: " + str(int(self.min_threshold_voltages[i]*self.display_multiplier))
+            self.max_threshold_voltage_labels[i].text = "max: " + str(int(self.max_threshold_voltages[i]*self.display_multiplier))
 
 
     def __init__(self, mc, title_text="Presently set threshold voltages (mV)", **kwargs):
