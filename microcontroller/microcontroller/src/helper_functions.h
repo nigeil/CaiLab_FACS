@@ -5,6 +5,7 @@
 #ifndef HELPER_FUNCTIONS_HEADER
 #define HELPER_FUNCTIONS_HEADER
 
+
 /*! \fn bytes_to_int
 * takes an array of 4 bytes and converts them to an unsigned integer
 */
@@ -21,5 +22,7 @@ void int_to_bytes(int, char*);
 * number of items (int), reverses said array elementwise in-place
 */
 void reverse(char*, int);
+
+
 
 #endif

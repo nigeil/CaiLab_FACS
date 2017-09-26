@@ -22,15 +22,15 @@
 */
 
 // new
-#define REDPIN    A5
+#define REDPIN    A2
 #define GREENPIN  A4
-#define BLUEPIN   A3
-#define YELLOWPIN A2
+#define BLUEPIN   A5
+#define YELLOWPIN A3
 
 // digital pin for triggering electrode (droplet selection)
-#define ELECTRODEPIN 21
-#define ELECTRODE_ON_TIME 100 // in us
-#define PAUSE_AFTER_SELECTION_TIME 250 // in us
+#define ELECTRODEPIN A7
+#define ELECTRODE_ON_TIME 50 // in us
+#define PAUSE_AFTER_SELECTION_TIME 50 // in us
 
 // digital pin for LED status light (HIGH if runstate == 1, running)
 //#define LEDSTATUSPIN 0 //old

@@ -253,8 +253,10 @@ class Microcontroller():
     def reset(self):
         #port = self.determine_serial_port("2539240") #dead
         #port = self.determine_serial_port("2539720") #dead
-        #port = self.determine_serial_port("2839790") #testing
-        port = self.determine_serial_port("2839090") #active, circuit board
+        port = self.determine_serial_port("2839790") #testing
+        #port = self.determine_serial_port("2839090") #active, circuit board
+        #port = self.determine_serial_port("2839780") #backup, working
+        
 
         self.microcontroller = serial.Serial(port, timeout=0.01, rtscts=True)
         self.microcontroller.reset_input_buffer()

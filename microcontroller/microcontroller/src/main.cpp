@@ -17,6 +17,12 @@
 // limits library, to calculate max values of various types
 #include <limits>
 
+// boost accumulator library, to calculate rolling mean/variance
+//#include <boost/accumulators/accumulators.hpp>
+//#include <boost/accumulators/statistics/stats.hpp>
+//#include <boost/accumulators/statistics/rolling_mean.hpp>
+//#include <boost/accumulators/statistics/rolling_variance.hpp>
+
 // project includes
 #include "helper_types.h"
 #include "global_defines.h"
@@ -32,6 +38,12 @@ u_int pins[N_CHANNELS] = {REDPIN,GREENPIN,BLUEPIN,YELLOWPIN};   // analog readin
 byteint current_voltage[N_CHANNELS];                            // {r,g,b,y}
 byteint previous_voltage[N_CHANNELS];                           // from previous loop iteration
 byteint max_voltage[N_CHANNELS];                                // after crossing minimum threshold, maximum voltage seen is stored here
+//byteint running_mean_voltage[N_CHANNELS];                       // from accumulator
+//byteint running_std_dev_voltage[N_CHANNELS];                    // from accumulator
+
+//typedef boost::accumulators::accumulator_set<double,stats<tag::rolling_mean, tag::rolling_variance, tag::rolling_window::window_size = ROLLING_WINDOW_SIZE> > window_acc;
+//window_acc data_accumulators[N_CHANNELS];                       // stores the accumulators
+
 
 byteint min_threshold_voltage[N_CHANNELS];                      // {r,g,b,y}; select cell if max_threshold_voltage[i] >= current_voltage[i] >= min_threshold_voltage[i].
 byteint max_threshold_voltage[N_CHANNELS];                      // {r,g,b,y}
@@ -48,6 +60,7 @@ ADC* adc;                                                       // pointer to th
 
 byteint time0;                                          // start time
 byteint time1;                                          // total time taken for 1 loop
+byteint clock_time_before_measurement;                  // stores the clock time (micros()) just before measuring voltages
 
 u_int measurement_time;                                 // time taken to measure voltages; used in determining whether or not to select cell
 
@@ -90,6 +103,9 @@ void setup() {
     current_voltage[i].i = 0;
     previous_voltage[i].i = 0;
     max_voltage[i].i = 0;
+    //running_mean_voltage[i].i = 0;
+    //running_std_dev_voltage[i].i = 0;
+    //data_accumulators[i] = window_acc();
     min_threshold_voltage[i].i = AMAX_VAL;
     max_threshold_voltage[i].i = AMAX_VAL;
     current_cell_count[i].i = 0;
@@ -98,6 +114,7 @@ void setup() {
     time_in_state[i] = 0;
     turned_from_high_state_to_low[i] = false;
   }
+
   run_state.i = 0;
 }
 
@@ -147,6 +164,9 @@ void loop() {
               current_voltage[i].i = 0;
               previous_voltage[i].i = 0;
               max_voltage[i].i = 0;
+              //running_mean_voltage[i].i = 0;
+              //running_std_dev_voltage[i].i = 0;
+              //data_accumulators[i] = window_acc();
               min_threshold_voltage[i].i = AMAX_VAL;
               max_threshold_voltage[i].i = AMAX_VAL;
               current_cell_count[i].i = 0;
@@ -261,10 +281,12 @@ else { //in test mode, so keep the runstate as ON
   // repeat on every loop; if we find that at least one channel is
   // above the minimum voltage, the while measurement loop below this
   // will be triggered, until the voltage falls again (a peak has passed)
+  clock_time_before_measurement.i = micros();
   measure_voltages(adc, pins, logic_states, current_voltage);
-  measurement_time = micros() - time0.i;
+  measurement_time = micros() - clock_time_before_measurement.i;
   for(u_int i=0; i<N_CHANNELS; i++){
-    if(current_voltage[i].i >= min_threshold_voltage[i].i){
+    //data_accumulators[i](current_voltage[i].i);
+    if(current_voltage[i].i >= (min_threshold_voltage[i].i)){
       time_in_state[i] = measurement_time;
     }
   }
@@ -274,8 +296,9 @@ else { //in test mode, so keep the runstate as ON
        for(u_int i=0; i<N_CHANNELS; i++){
          previous_voltage[i].i = current_voltage[i].i;
        }
+       clock_time_before_measurement.i = micros();
        measure_voltages(adc, pins, logic_states, current_voltage);
-       measurement_time = micros() - time0.i;
+       measurement_time = micros() - clock_time_before_measurement.i;
        for(u_int i=0; i<N_CHANNELS; i++){
          if(current_voltage[i].i >= min_threshold_voltage[i].i){
            time_in_state[i] += measurement_time;
